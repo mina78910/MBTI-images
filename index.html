@@ -103,6 +103,8 @@
       padding: 16px;
     }
 
+    .toolbar[hidden] { display: none; }
+
     .toolbar-header {
       display: flex;
       align-items: center;
@@ -117,7 +119,14 @@
       font-weight: 950;
     }
 
-    .toolbar-toggle {
+    .toolbar-header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .toolbar-toggle, .toolbar-close, .toolbar-open-fixed {
       border: 0;
       border-radius: 999px;
       padding: 9px 14px;
@@ -127,6 +136,21 @@
       cursor: pointer;
       box-shadow: 0 10px 22px rgba(42, 39, 58, 0.16);
     }
+
+    .toolbar-close {
+      color: var(--accent);
+      background: rgba(111, 93, 231, 0.12);
+    }
+
+    .toolbar-open-fixed {
+      position: fixed;
+      top: max(12px, env(safe-area-inset-top));
+      right: max(12px, env(safe-area-inset-right));
+      z-index: 60;
+      padding: 11px 18px;
+    }
+
+    .toolbar-open-fixed[hidden] { display: none; }
 
     .toolbar-content {
       display: grid;
@@ -203,6 +227,7 @@
     }
 
     .search-control, .sort-control {
+      position: relative;
       display: grid;
       gap: 7px;
       min-width: min(100%, 320px);
@@ -282,13 +307,14 @@
     }
 
     .tag-picker-panel {
-      position: absolute;
-      right: 0;
-      top: calc(100% + 10px);
+      position: fixed;
+      left: 50%;
+      top: var(--tag-picker-top, 96px);
+      transform: translateX(-50%);
       z-index: 30;
       display: grid;
       gap: 12px;
-      width: min(92vw, 760px);
+      width: min(calc(100vw - 24px), 760px);
       max-height: min(70vh, 560px);
       overflow: auto;
       padding: 16px;
@@ -373,6 +399,10 @@
       color: var(--muted);
       font-weight: 800;
     }
+
+    .tag-picker.advanced-on-mobile { display: none; }
+
+    .toolbar.is-expanded .tag-picker.advanced-on-mobile { display: grid; }
 
     .search-control input, .sort-select { width: 100%; }
 
@@ -555,7 +585,9 @@
     }
 
     .tag-form {
+      position: relative;
       display: flex;
+      flex-wrap: wrap;
       gap: 8px;
     }
 
@@ -564,7 +596,7 @@
       flex: 1;
     }
 
-    .tag-submit {
+    .tag-submit, .tag-list-toggle {
       border: 0;
       border-radius: 999px;
       padding: 0 13px;
@@ -572,6 +604,49 @@
       background: var(--accent);
       font-weight: 900;
       cursor: pointer;
+    }
+
+    .tag-list-toggle {
+      color: var(--accent);
+      background: rgba(111, 93, 231, 0.12);
+    }
+
+    .tag-suggestions, .search-suggestions {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(100% + 8px);
+      z-index: 25;
+      display: grid;
+      gap: 6px;
+      max-height: 220px;
+      overflow: auto;
+      padding: 8px;
+      border: 1px solid rgba(104, 115, 134, 0.22);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.97);
+      box-shadow: 0 14px 34px rgba(42, 39, 58, 0.16);
+    }
+
+    .tag-suggestions[hidden], .search-suggestions[hidden] { display: none; }
+
+    .tag-suggestion-button, .search-suggestion-button {
+      border: 0;
+      border-radius: 999px;
+      padding: 8px 11px;
+      color: var(--ink);
+      background: rgba(39, 49, 63, 0.08);
+      font-size: 0.84rem;
+      font-weight: 900;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .tag-suggestion-button:hover, .tag-suggestion-button:focus-visible,
+    .search-suggestion-button:hover, .search-suggestion-button:focus-visible {
+      color: white;
+      background: var(--accent);
+      outline: none;
     }
 
     .card-admin-actions {
@@ -633,20 +708,27 @@
         border-radius: 20px;
       }
       .toolbar-actions { align-items: stretch; }
+      .toolbar-header-actions { width: 100%; }
+      .toolbar-header-actions > button { flex: 1; }
       .size-control { grid-template-columns: auto minmax(120px, 1fr) auto; }
       .auth-actions { width: 100%; }
       .upload-control { justify-content: center; width: 100%; }
       .tag-picker { width: 100%; }
-      .tag-picker-panel { left: 0; right: auto; width: calc(100vw - 24px); }
+      .advanced-on-mobile { display: none; }
+      .toolbar.is-expanded .advanced-on-mobile { display: grid; }
     }
   </style>
 </head>
 <body>
   <main class="app-shell">
-    <section class="toolbar viewer-card" aria-label="一覧操作">
+    <button id="toolbarOpenFixed" class="toolbar-open-fixed" type="button" hidden>開く</button>
+    <section id="toolbar" class="toolbar viewer-card" aria-label="一覧操作">
       <div class="toolbar-header">
         <p class="toolbar-title">表示・検索メニュー</p>
-        <button id="toolbarToggle" class="toolbar-toggle" type="button" aria-expanded="false" aria-controls="toolbarContent">さらにメニューを開く</button>
+        <div class="toolbar-header-actions">
+          <button id="toolbarClose" class="toolbar-close" type="button">閉じる</button>
+          <button id="toolbarToggle" class="toolbar-toggle" type="button" aria-expanded="false" aria-controls="toolbarContent">さらにメニューを開く</button>
+        </div>
       </div>
       <div class="toolbar-actions">
         <label class="size-control" for="sizeRange">
@@ -663,12 +745,13 @@
             </span>
           </div>
           <input id="searchInput" type="search" placeholder="例: NT、内向、チーム" autocomplete="off" aria-label="タグで資料を検索">
+          <div id="searchSuggestions" class="search-suggestions" role="listbox" aria-label="既存タグ検索候補" hidden></div>
         </div>
-        <div class="search-control">
+        <div class="search-control advanced-on-mobile">
           <label for="excludeSearchInput">検索除外タグ</label>
           <input id="excludeSearchInput" type="search" placeholder="例: 古い、重複、不要" autocomplete="off" aria-label="除外したいタグで資料を絞り込み">
         </div>
-        <div class="search-control tag-picker">
+        <div class="search-control tag-picker advanced-on-mobile">
           <label for="tagPickerButton">タグ一覧</label>
           <button id="tagPickerButton" class="tag-picker-button" type="button" aria-expanded="false" aria-controls="tagPickerPanel">全タグから選ぶ</button>
           <div id="tagPickerPanel" class="tag-picker-panel" role="dialog" aria-modal="false" aria-labelledby="tagPickerTitle" hidden>
@@ -751,6 +834,7 @@
     const sizeRange = document.querySelector("#sizeRange");
     const imageUpload = document.querySelector("#imageUpload");
     const searchInput = document.querySelector("#searchInput");
+    const searchSuggestions = document.querySelector("#searchSuggestions");
     const excludeSearchInput = document.querySelector("#excludeSearchInput");
     const uploadNote = document.querySelector("#uploadNote");
     const authStatus = document.querySelector("#authStatus");
@@ -761,7 +845,10 @@
     const sortSelect = document.querySelector("#sortSelect");
     const saveOrderButton = document.querySelector("#saveOrderButton");
     const operationStatus = document.querySelector("#operationStatus");
+    const toolbar = document.querySelector("#toolbar");
     const toolbarToggle = document.querySelector("#toolbarToggle");
+    const toolbarClose = document.querySelector("#toolbarClose");
+    const toolbarOpenFixed = document.querySelector("#toolbarOpenFixed");
     const toolbarContent = document.querySelector("#toolbarContent");
     const tagInfoButton = document.querySelector("#tagInfoButton");
     const tagInfoPanel = document.querySelector("#tagInfoPanel");
@@ -783,7 +870,18 @@
     function setToolbarExpanded(isExpanded) {
       toolbarContent.hidden = !isExpanded;
       toolbarToggle.setAttribute("aria-expanded", String(isExpanded));
-      toolbarToggle.textContent = isExpanded ? "メニューを閉じる" : "さらにメニューを開く";
+      toolbar.classList.toggle("is-expanded", isExpanded);
+      toolbarToggle.textContent = isExpanded ? "さらにメニューを閉じる" : "さらにメニューを開く";
+    }
+
+    function setToolbarVisible(isVisible) {
+      toolbar.hidden = !isVisible;
+      toolbarOpenFixed.hidden = isVisible;
+      if (!isVisible) {
+        setTagInfoExpanded(false);
+        setTagPickerExpanded(false);
+        hideSearchSuggestions();
+      }
     }
 
     function setTagInfoExpanded(isExpanded) {
@@ -807,17 +905,21 @@
       tagPickerPanel.hidden = !isExpanded;
       tagPickerButton.setAttribute("aria-expanded", String(isExpanded));
       if (isExpanded) {
+        const buttonRect = tagPickerButton.getBoundingClientRect();
+        tagPickerPanel.style.setProperty("--tag-picker-top", `${Math.max(12, buttonRect.bottom + 10)}px`);
         renderTagPicker();
         window.requestAnimationFrame(() => tagPickerFilter.focus());
       }
     }
 
-    function addSearchTag(tag) {
-      const terms = splitTagQuery(searchInput.value);
-      if (!terms.includes(tag.toLowerCase())) {
-        searchInput.value = [...searchInput.value.trim().split(/[\s,、]+/).filter(Boolean), tag].join(" ");
-      }
+    function addSearchTag(tag, { replaceLast = false } = {}) {
+      const normalizedTag = tag.toLowerCase();
+      const currentTerms = searchInput.value.trim().split(/[\s,、]+/).filter(Boolean);
+      const nextTerms = replaceLast ? currentTerms.slice(0, -1) : currentTerms;
+      if (!nextTerms.some((term) => term.toLowerCase() === normalizedTag)) nextTerms.push(tag);
+      searchInput.value = nextTerms.join(" ");
       syncSearchQueryToUrl();
+      renderSearchSuggestions();
       renderGallery();
     }
 
@@ -829,6 +931,89 @@
       tagPickerOptions.innerHTML = tags.length
         ? tags.map((tag) => `<button class="tag-option-button" type="button" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`).join("")
         : `<p class="tag-picker-empty">${allTags.length ? "条件に一致するタグがありません。" : "まだ登録済みタグがありません。"}</p>`;
+    }
+
+
+    function matchingExistingTags(queryText, item, { showAll = false } = {}) {
+      const query = queryText.trim().toLowerCase();
+      const itemTagKeys = new Set(itemTags(item).map((tag) => tag.toLowerCase()));
+      if (!query && !showAll) return [];
+      return allUniqueTags()
+        .filter((tag) => (showAll || tag.toLowerCase().includes(query)) && !itemTagKeys.has(tag.toLowerCase()))
+        .slice(0, showAll ? 80 : 8);
+    }
+
+    function matchingSearchTags(queryText) {
+      const query = queryText.trim().split(/[\s,、]+/).pop()?.toLowerCase() || "";
+      const selectedTagKeys = new Set(splitTagQuery(searchInput.value));
+      if (!query) return [];
+      return allUniqueTags()
+        .filter((tag) => tag.toLowerCase().includes(query) && !selectedTagKeys.has(tag.toLowerCase()))
+        .slice(0, 8);
+    }
+
+    function canonicalTagName(value) {
+      const normalizedValue = value.trim();
+      const existingTag = allUniqueTags().find((tag) => tag.toLowerCase() === normalizedValue.toLowerCase());
+      return existingTag || normalizedValue;
+    }
+
+    function renderTagSuggestions(form, options = {}) {
+      if (!form) return;
+      const input = form.elements.tag;
+      const suggestions = form.querySelector(".tag-suggestions");
+      const item = materials[Number(form.dataset.index)];
+      if (!input || !suggestions || !item) return;
+      const tags = matchingExistingTags(input.value, item, options);
+      suggestions.hidden = !tags.length;
+      suggestions.innerHTML = tags.map((tag) => (
+        `<button class="tag-suggestion-button" type="button" role="option" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`
+      )).join("");
+    }
+
+    function renderSearchSuggestions() {
+      const tags = matchingSearchTags(searchInput.value);
+      searchSuggestions.hidden = !tags.length;
+      searchSuggestions.innerHTML = tags.map((tag) => (
+        `<button class="search-suggestion-button" type="button" role="option" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`
+      )).join("");
+    }
+
+    function hideSearchSuggestions() {
+      searchSuggestions.hidden = true;
+      searchSuggestions.innerHTML = "";
+    }
+
+    function hideTagSuggestions(form) {
+      const suggestions = form?.querySelector(".tag-suggestions");
+      if (!suggestions) return;
+      suggestions.hidden = true;
+      suggestions.innerHTML = "";
+    }
+
+    async function addTagToMaterial(index, rawValue, input) {
+      if (!canUpload()) {
+        setMessage("タグ追加には管理者Googleアカウントでのログインが必要です。");
+        return;
+      }
+      const value = canonicalTagName(rawValue);
+      if (!value) return;
+      const item = materials[index];
+      if (!item) return;
+      const tags = itemTags(item);
+      if (tags.some((tag) => tag.toLowerCase() === value.toLowerCase())) {
+        if (input) input.value = "";
+        hideTagSuggestions(input?.closest(".tag-form"));
+        return;
+      }
+      try {
+        await updateDoc(doc(db, "materials", item.id), { tags: [...tags, value] });
+        if (input) input.value = "";
+        hideTagSuggestions(input?.closest(".tag-form"));
+      } catch (error) {
+        console.error("Tag update failed", error);
+        showFirebaseError("タグ更新", error);
+      }
     }
 
     function syncSearchQueryToUrl() {
@@ -998,6 +1183,8 @@
               <form class="tag-form" data-index="${materialIndex}" aria-label="${title}にタグを追加">
                 <input class="tag-input" name="tag" type="text" placeholder="タグを追加" autocomplete="off" aria-label="追加するタグ" ${canEditTags ? "" : "disabled"}>
                 <button class="tag-submit" type="submit" ${canEditTags ? "" : "disabled"}>追加</button>
+                <button class="tag-list-toggle" type="button" ${canEditTags ? "" : "disabled"} aria-label="既存タグ一覧から追加">タグ一覧</button>
+                <div class="tag-suggestions" role="listbox" aria-label="既存タグ候補" hidden></div>
               </form>` : ""}
               ${adminControls}
             </div>
@@ -1295,26 +1482,13 @@
       const form = event.target.closest(".tag-form");
       if (!form) return;
       event.preventDefault();
-      if (!canUpload()) {
-        setMessage("タグ追加には管理者Googleアカウントでのログインが必要です。");
-        return;
-      }
-      const input = form.elements.tag;
-      const value = input.value.trim();
-      if (!value) return;
-      const item = materials[Number(form.dataset.index)];
-      const tags = itemTags(item);
-      if (tags.some((tag) => tag.toLowerCase() === value.toLowerCase())) {
-        input.value = "";
-        return;
-      }
-      try {
-        await updateDoc(doc(db, "materials", item.id), { tags: [...tags, value] });
-        input.value = "";
-      } catch (error) {
-        console.error("Tag update failed", error);
-        showFirebaseError("タグ更新", error);
-      }
+      await addTagToMaterial(Number(form.dataset.index), form.elements.tag.value, form.elements.tag);
+    });
+
+    gallery.addEventListener("input", (event) => {
+      const input = event.target.closest(".tag-input");
+      if (!input) return;
+      renderTagSuggestions(input.closest(".tag-form"));
     });
 
     gallery.addEventListener("change", async (event) => {
@@ -1326,6 +1500,22 @@
     });
 
     gallery.addEventListener("click", async (event) => {
+      const listToggle = event.target.closest(".tag-list-toggle");
+      if (listToggle) {
+        const form = listToggle.closest(".tag-form");
+        const suggestions = form.querySelector(".tag-suggestions");
+        if (suggestions.hidden) renderTagSuggestions(form, { showAll: true });
+        else hideTagSuggestions(form);
+        return;
+      }
+
+      const suggestionButton = event.target.closest(".tag-suggestion-button");
+      if (suggestionButton) {
+        const form = suggestionButton.closest(".tag-form");
+        await addTagToMaterial(Number(form.dataset.index), suggestionButton.dataset.tag, form.elements.tag);
+        return;
+      }
+
       const deleteButton = event.target.closest(".delete-button");
       const moveButton = event.target.closest(".move-button");
       if (moveButton) {
@@ -1382,6 +1572,15 @@
       setToolbarExpanded(toolbarContent.hidden);
     });
 
+    toolbarClose.addEventListener("click", () => {
+      setToolbarVisible(false);
+    });
+
+    toolbarOpenFixed.addEventListener("click", () => {
+      setToolbarVisible(true);
+      toolbarToggle.focus();
+    });
+
     tagInfoButton.addEventListener("click", () => {
       setTagInfoExpanded(tagInfoPanel.hidden);
     });
@@ -1402,12 +1601,23 @@
       if (!button) return;
       addSearchTag(button.dataset.tag);
       setTagPickerExpanded(false);
+      hideSearchSuggestions();
+      searchInput.focus();
+    });
+
+    searchSuggestions.addEventListener("click", (event) => {
+      const button = event.target.closest(".search-suggestion-button");
+      if (!button) return;
+      addSearchTag(button.dataset.tag, { replaceLast: true });
+      hideSearchSuggestions();
       searchInput.focus();
     });
 
     document.addEventListener("click", (event) => {
       if (!tagInfoPanel.hidden && !event.target.closest(".tag-info-wrapper")) setTagInfoExpanded(false);
       if (!tagPickerPanel.hidden && !event.target.closest(".tag-picker")) setTagPickerExpanded(false);
+      if (!event.target.closest(".tag-form")) gallery.querySelectorAll(".tag-form").forEach(hideTagSuggestions);
+      if (!event.target.closest("#searchInput") && !event.target.closest("#searchSuggestions")) hideSearchSuggestions();
     });
 
     document.addEventListener("keydown", (event) => {
@@ -1419,8 +1629,10 @@
     sizeRange.addEventListener("input", (event) => applyCardSize(event.target.value));
     searchInput.addEventListener("input", () => {
       syncSearchQueryToUrl();
+      renderSearchSuggestions();
       renderGallery();
     });
+    searchInput.addEventListener("focus", renderSearchSuggestions);
     excludeSearchInput.addEventListener("input", () => {
       syncSearchQueryToUrl();
       renderGallery();

@@ -701,11 +701,15 @@
 
     @media (max-width: 560px) {
       .app-shell { padding: 12px; }
-      .toolbar {
+      .toolbar.viewer-card {
         gap: 10px;
+        max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
         margin-bottom: 14px;
         padding: 12px;
         border-radius: 20px;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
       }
       .toolbar-actions { align-items: stretch; }
       .toolbar-header-actions { width: 100%; }

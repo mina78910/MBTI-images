@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MBTI オフライン資料ギャラリー</title>
+  <title>MBTI 資料</title>
   <style>
     :root {
       color-scheme: light;
@@ -57,19 +57,6 @@
       padding: 16px;
     }
 
-    .toolbar-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px 16px;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .toolbar-title {
-      margin: 0;
-      font-size: clamp(1.25rem, 3vw, 2rem);
-    }
-
     .size-control {
       display: grid;
       grid-template-columns: auto minmax(180px, 420px) auto;
@@ -85,20 +72,6 @@
       accent-color: var(--accent);
       cursor: pointer;
     }
-
-    .max-button {
-      border: 0;
-      border-radius: 999px;
-      padding: 10px 16px;
-      color: white;
-      background: linear-gradient(135deg, var(--accent), var(--accent-2));
-      font-weight: 900;
-      cursor: pointer;
-      box-shadow: 0 10px 24px rgba(111, 93, 231, 0.24);
-      transition: transform 0.18s ease, box-shadow 0.18s ease;
-    }
-
-    .max-button:hover { transform: translateY(-1px); box-shadow: 0 14px 30px rgba(111, 93, 231, 0.3); }
 
     .gallery {
       display: grid;
@@ -164,10 +137,6 @@
 <body>
   <main class="app-shell">
     <section class="toolbar viewer-card" aria-label="一覧サイズ調整">
-      <div class="toolbar-row">
-        <h1 class="toolbar-title">MBTI オフライン資料ギャラリー</h1>
-        <button id="maxSizeButton" class="max-button" type="button">一覧のまま最大表示</button>
-      </div>
       <label class="size-control" for="sizeRange">
         <span>小</span>
         <input id="sizeRange" type="range" min="160" max="1180" step="20" value="240" aria-label="一覧画像の大きさ">
@@ -236,7 +205,6 @@
 
     const gallery = document.querySelector("#gallery");
     const sizeRange = document.querySelector("#sizeRange");
-    const maxSizeButton = document.querySelector("#maxSizeButton");
     const minCardSize = Number(sizeRange.min);
     const maxCardSize = Number(sizeRange.max);
 
@@ -249,7 +217,7 @@
 
     gallery.innerHTML = materials.map((item, index) => `
       <article class="viewer-card">
-        <button class="image-button" type="button" data-index="${index}" aria-label="${item[0]}を一覧のまま最大表示">
+        <button class="image-button" type="button" data-index="${index}" aria-label="${item[0]}を表示">
           <div class="image-wrap"><img src="${imageSrc(item, index)}" alt="${item[0]}のサンプル資料" data-fallback-src="${item[4] || svgData(item, index)}" data-final-fallback-src="${svgData(item, index)}"><span class="badge">${item[2]}</span></div>
         </button>
       </article>
@@ -264,8 +232,6 @@
     applyCardSize(sizeRange.value);
 
     sizeRange.addEventListener("input", (event) => applyCardSize(event.target.value));
-    maxSizeButton.addEventListener("click", () => applyCardSize(maxCardSize));
-
     gallery.addEventListener("error", (event) => {
       const image = event.target.closest("img[data-fallback-src]");
       if (!image) return;

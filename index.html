@@ -203,6 +203,7 @@
     }
 
     .search-control, .sort-control {
+      position: relative;
       display: grid;
       gap: 7px;
       min-width: min(100%, 320px);
@@ -555,7 +556,9 @@
     }
 
     .tag-form {
+      position: relative;
       display: flex;
+      flex-wrap: wrap;
       gap: 8px;
     }
 
@@ -564,9 +567,7 @@
       flex: 1;
     }
 
-    .tag-form { position: relative; }
-
-    .tag-submit {
+    .tag-submit, .tag-list-toggle {
       border: 0;
       border-radius: 999px;
       padding: 0 13px;
@@ -576,7 +577,12 @@
       cursor: pointer;
     }
 
-    .tag-suggestions {
+    .tag-list-toggle {
+      color: var(--accent);
+      background: rgba(111, 93, 231, 0.12);
+    }
+
+    .tag-suggestions, .search-suggestions {
       position: absolute;
       left: 0;
       right: 0;
@@ -593,9 +599,9 @@
       box-shadow: 0 14px 34px rgba(42, 39, 58, 0.16);
     }
 
-    .tag-suggestions[hidden] { display: none; }
+    .tag-suggestions[hidden], .search-suggestions[hidden] { display: none; }
 
-    .tag-suggestion-button {
+    .tag-suggestion-button, .search-suggestion-button {
       border: 0;
       border-radius: 999px;
       padding: 8px 11px;
@@ -607,7 +613,8 @@
       cursor: pointer;
     }
 
-    .tag-suggestion-button:hover, .tag-suggestion-button:focus-visible {
+    .tag-suggestion-button:hover, .tag-suggestion-button:focus-visible,
+    .search-suggestion-button:hover, .search-suggestion-button:focus-visible {
       color: white;
       background: var(--accent);
       outline: none;
@@ -704,6 +711,7 @@
             </span>
           </div>
           <input id="searchInput" type="search" placeholder="例: NT、内向、チーム" autocomplete="off" aria-label="タグで資料を検索">
+          <div id="searchSuggestions" class="search-suggestions" role="listbox" aria-label="既存タグ検索候補" hidden></div>
         </div>
         <div class="search-control advanced-on-mobile">
           <label for="excludeSearchInput">検索除外タグ</label>
@@ -792,6 +800,7 @@
     const sizeRange = document.querySelector("#sizeRange");
     const imageUpload = document.querySelector("#imageUpload");
     const searchInput = document.querySelector("#searchInput");
+    const searchSuggestions = document.querySelector("#searchSuggestions");
     const excludeSearchInput = document.querySelector("#excludeSearchInput");
     const uploadNote = document.querySelector("#uploadNote");
     const authStatus = document.querySelector("#authStatus");
@@ -874,12 +883,21 @@
     }
 
 
-    function matchingExistingTags(queryText, item) {
+    function matchingExistingTags(queryText, item, { showAll = false } = {}) {
       const query = queryText.trim().toLowerCase();
       const itemTagKeys = new Set(itemTags(item).map((tag) => tag.toLowerCase()));
+      if (!query && !showAll) return [];
+      return allUniqueTags()
+        .filter((tag) => (showAll || tag.toLowerCase().includes(query)) && !itemTagKeys.has(tag.toLowerCase()))
+        .slice(0, showAll ? 80 : 8);
+    }
+
+    function matchingSearchTags(queryText) {
+      const query = queryText.trim().split(/[\s,、]+/).pop()?.toLowerCase() || "";
+      const selectedTagKeys = new Set(splitTagQuery(searchInput.value));
       if (!query) return [];
       return allUniqueTags()
-        .filter((tag) => tag.toLowerCase().includes(query) && !itemTagKeys.has(tag.toLowerCase()))
+        .filter((tag) => tag.toLowerCase().includes(query) && !selectedTagKeys.has(tag.toLowerCase()))
         .slice(0, 8);
     }
 
@@ -889,17 +907,30 @@
       return existingTag || normalizedValue;
     }
 
-    function renderTagSuggestions(form) {
+    function renderTagSuggestions(form, options = {}) {
       if (!form) return;
       const input = form.elements.tag;
       const suggestions = form.querySelector(".tag-suggestions");
       const item = materials[Number(form.dataset.index)];
       if (!input || !suggestions || !item) return;
-      const tags = matchingExistingTags(input.value, item);
+      const tags = matchingExistingTags(input.value, item, options);
       suggestions.hidden = !tags.length;
       suggestions.innerHTML = tags.map((tag) => (
         `<button class="tag-suggestion-button" type="button" role="option" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`
       )).join("");
+    }
+
+    function renderSearchSuggestions() {
+      const tags = matchingSearchTags(searchInput.value);
+      searchSuggestions.hidden = !tags.length;
+      searchSuggestions.innerHTML = tags.map((tag) => (
+        `<button class="search-suggestion-button" type="button" role="option" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`
+      )).join("");
+    }
+
+    function hideSearchSuggestions() {
+      searchSuggestions.hidden = true;
+      searchSuggestions.innerHTML = "";
     }
 
     function hideTagSuggestions(form) {
@@ -1101,6 +1132,7 @@
               <form class="tag-form" data-index="${materialIndex}" aria-label="${title}にタグを追加">
                 <input class="tag-input" name="tag" type="text" placeholder="タグを追加" autocomplete="off" aria-label="追加するタグ" ${canEditTags ? "" : "disabled"}>
                 <button class="tag-submit" type="submit" ${canEditTags ? "" : "disabled"}>追加</button>
+                <button class="tag-list-toggle" type="button" ${canEditTags ? "" : "disabled"} aria-label="既存タグ一覧から追加">タグ一覧</button>
                 <div class="tag-suggestions" role="listbox" aria-label="既存タグ候補" hidden></div>
               </form>` : ""}
               ${adminControls}
@@ -1417,6 +1449,15 @@
     });
 
     gallery.addEventListener("click", async (event) => {
+      const listToggle = event.target.closest(".tag-list-toggle");
+      if (listToggle) {
+        const form = listToggle.closest(".tag-form");
+        const suggestions = form.querySelector(".tag-suggestions");
+        if (suggestions.hidden) renderTagSuggestions(form, { showAll: true });
+        else hideTagSuggestions(form);
+        return;
+      }
+
       const suggestionButton = event.target.closest(".tag-suggestion-button");
       if (suggestionButton) {
         const form = suggestionButton.closest(".tag-form");
@@ -1500,6 +1541,15 @@
       if (!button) return;
       addSearchTag(button.dataset.tag);
       setTagPickerExpanded(false);
+      hideSearchSuggestions();
+      searchInput.focus();
+    });
+
+    searchSuggestions.addEventListener("click", (event) => {
+      const button = event.target.closest(".search-suggestion-button");
+      if (!button) return;
+      addSearchTag(button.dataset.tag);
+      hideSearchSuggestions();
       searchInput.focus();
     });
 
@@ -1507,6 +1557,7 @@
       if (!tagInfoPanel.hidden && !event.target.closest(".tag-info-wrapper")) setTagInfoExpanded(false);
       if (!tagPickerPanel.hidden && !event.target.closest(".tag-picker")) setTagPickerExpanded(false);
       if (!event.target.closest(".tag-form")) gallery.querySelectorAll(".tag-form").forEach(hideTagSuggestions);
+      if (!event.target.closest("#searchInput") && !event.target.closest("#searchSuggestions")) hideSearchSuggestions();
     });
 
     document.addEventListener("keydown", (event) => {
@@ -1518,8 +1569,10 @@
     sizeRange.addEventListener("input", (event) => applyCardSize(event.target.value));
     searchInput.addEventListener("input", () => {
       syncSearchQueryToUrl();
+      renderSearchSuggestions();
       renderGallery();
     });
+    searchInput.addEventListener("focus", renderSearchSuggestions);
     excludeSearchInput.addEventListener("input", () => {
       syncSearchQueryToUrl();
       renderGallery();

@@ -120,50 +120,75 @@
     }
 
     .modal-content {
-      width: min(1180px, 100%);
-      max-height: min(920px, 92vh);
+      position: relative;
+      width: min(100%, calc(100vw - clamp(24px, 6vw, 64px)));
+      height: min(100%, calc(100vh - clamp(24px, 6vw, 64px)));
       display: grid;
-      grid-template-rows: auto minmax(0, 1fr) auto;
+      grid-template-rows: minmax(0, 1fr);
       overflow: hidden;
       background: #fff;
     }
 
     .modal-header, .modal-footer {
+      position: absolute;
+      z-index: 1;
       display: flex;
       gap: 12px;
       align-items: center;
-      justify-content: space-between;
-      padding: 14px 16px;
+      pointer-events: none;
     }
 
-    .modal-title { margin: 0; font-size: clamp(1.1rem, 3vw, 1.6rem); }
+    .modal-header {
+      top: 12px;
+      right: 12px;
+      left: 12px;
+      justify-content: space-between;
+    }
+
+    .modal-footer {
+      right: 12px;
+      bottom: 12px;
+      left: 12px;
+      justify-content: space-between;
+    }
+
+    .modal-title {
+      margin: 0;
+      max-width: calc(100% - 64px);
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.84);
+      font-size: clamp(1rem, 2.5vw, 1.35rem);
+    }
     .modal-close, .nav-button {
       min-width: 44px;
       min-height: 44px;
       border-radius: 999px;
       color: var(--ink);
-      background: #f0edf9;
+      background: rgba(240, 237, 249, 0.9);
       font-weight: 900;
+      pointer-events: auto;
     }
 
     .modal-close:hover, .nav-button:hover { transform: translateY(-1px); }
 
     .zoom-stage {
-      overflow: auto;
+      display: grid;
+      min-height: 0;
+      place-items: center;
+      overflow: hidden;
       background: #101622;
-      touch-action: pan-x pan-y;
     }
 
     .zoom-stage img {
       display: block;
-      width: var(--zoom-width, 1600px);
-      max-width: none;
-      margin: auto;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
     }
 
     @media (max-width: 560px) {
       .app-shell { padding: 12px; }
-      .modal-header, .modal-footer { align-items: stretch; flex-direction: column; }
       .gallery { grid-template-columns: repeat(auto-fill, minmax(var(--card-min, 145px), 1fr)); }
     }
   </style>

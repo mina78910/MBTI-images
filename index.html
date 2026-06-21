@@ -90,6 +90,38 @@
       padding: 16px;
     }
 
+    .toolbar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .toolbar-title {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1rem;
+      font-weight: 950;
+    }
+
+    .toolbar-toggle {
+      border: 0;
+      border-radius: 999px;
+      padding: 9px 14px;
+      color: white;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      font-weight: 950;
+      cursor: pointer;
+      box-shadow: 0 10px 22px rgba(42, 39, 58, 0.16);
+    }
+
+    .toolbar-content {
+      display: grid;
+      gap: 14px;
+    }
+
+    .toolbar-content[hidden] { display: none; }
+
     .size-control {
       display: grid;
       grid-template-columns: auto minmax(180px, 420px) auto;
@@ -342,9 +374,31 @@
       cursor: pointer;
     }
 
+    .delete-button {
+      justify-self: start;
+      border: 0;
+      border-radius: 999px;
+      padding: 8px 12px;
+      color: #842029;
+      background: rgba(220, 53, 69, 0.12);
+      font-size: 0.82rem;
+      font-weight: 950;
+      cursor: pointer;
+    }
+
+    .delete-button:hover, .delete-button:focus-visible {
+      background: rgba(220, 53, 69, 0.2);
+    }
+
 
     @media (max-width: 560px) {
       .app-shell { padding: 12px; }
+      .toolbar {
+        gap: 10px;
+        margin-bottom: 14px;
+        padding: 12px;
+        border-radius: 20px;
+      }
       .toolbar-actions { align-items: stretch; }
       .size-control { grid-template-columns: auto minmax(120px, 1fr) auto; }
       .auth-actions { width: 100%; }
@@ -355,29 +409,35 @@
 <body>
   <main class="app-shell">
     <section class="toolbar viewer-card" aria-label="一覧操作">
-      <div class="toolbar-actions">
-        <label class="size-control" for="sizeRange">
-          <span>小</span>
-          <input id="sizeRange" type="range" min="160" max="1180" step="20" value="240" aria-label="一覧画像の大きさ">
-          <span>大</span>
-        </label>
-        <label class="search-control" for="searchInput">
-          <span>タグ検索</span>
-          <input id="searchInput" type="search" placeholder="例: NT、内向、チーム" autocomplete="off" aria-label="タグで資料を検索">
-        </label>
-        <div class="auth-actions" aria-live="polite">
-          <span id="authStatus">ログインしていません</span>
-          <button id="loginButton" class="auth-button" type="button">Googleでログイン</button>
-          <button id="logoutButton" class="auth-button" type="button" hidden>ログアウト</button>
-        </div>
-        <label id="uploadControl" class="upload-control" for="imageUpload" aria-disabled="true">
-          <span id="uploadLabel">画像を追加</span>
-          <input id="imageUpload" type="file" accept="image/*" multiple aria-label="追加する画像を選択" disabled>
-        </label>
+      <div class="toolbar-header">
+        <p class="toolbar-title">表示・検索メニュー</p>
+        <button id="toolbarToggle" class="toolbar-toggle" type="button" aria-expanded="false" aria-controls="toolbarContent">メニューを開く</button>
       </div>
-      <div class="status-area" aria-live="polite">
-        <p id="uploadNote" class="upload-note">PCでは画像ファイルの選択に加えて、クリップボードの画像をそのまま Ctrl+V / ⌘V で貼り付けて追加できます。アップロードにはGoogleログインが必要です。</p>
-        <div id="operationStatus" class="status-message" hidden></div>
+      <div id="toolbarContent" class="toolbar-content" hidden>
+        <div class="toolbar-actions">
+          <label class="size-control" for="sizeRange">
+            <span>小</span>
+            <input id="sizeRange" type="range" min="160" max="1180" step="20" value="240" aria-label="一覧画像の大きさ">
+            <span>大</span>
+          </label>
+          <label class="search-control" for="searchInput">
+            <span>タグ検索</span>
+            <input id="searchInput" type="search" placeholder="例: NT、内向、チーム" autocomplete="off" aria-label="タグで資料を検索">
+          </label>
+          <div class="auth-actions" aria-live="polite">
+            <span id="authStatus">ログインしていません</span>
+            <button id="loginButton" class="auth-button" type="button">Googleでログイン</button>
+            <button id="logoutButton" class="auth-button" type="button" hidden>ログアウト</button>
+          </div>
+          <label id="uploadControl" class="upload-control" for="imageUpload" aria-disabled="true">
+            <span id="uploadLabel">画像を追加</span>
+            <input id="imageUpload" type="file" accept="image/*" multiple aria-label="追加する画像を選択" disabled>
+          </label>
+        </div>
+        <div class="status-area" aria-live="polite">
+          <p id="uploadNote" class="upload-note">PCでは画像ファイルの選択に加えて、クリップボードの画像をそのまま Ctrl+V / ⌘V で貼り付けて追加できます。アップロードにはGoogleログインが必要です。</p>
+          <div id="operationStatus" class="status-message" hidden></div>
+        </div>
       </div>
     </section>
     <section id="gallery" class="gallery" aria-label="MBTI資料サンプル一覧"></section>
@@ -386,8 +446,8 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
-    import { getFirestore, addDoc, collection, onSnapshot, orderBy, query, serverTimestamp, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
-    import { getDownloadURL, getStorage, ref, uploadBytes } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-storage.js";
+    import { getFirestore, addDoc, collection, deleteDoc, onSnapshot, orderBy, query, serverTimestamp, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+    import { deleteObject, getDownloadURL, getStorage, ref, uploadBytes } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-storage.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDwIdnlDMOsu_dVvyDluC7TI-aa_dK6SFs",
@@ -423,12 +483,21 @@
     const uploadControl = document.querySelector("#uploadControl");
     const uploadLabel = document.querySelector("#uploadLabel");
     const operationStatus = document.querySelector("#operationStatus");
+    const toolbarToggle = document.querySelector("#toolbarToggle");
+    const toolbarContent = document.querySelector("#toolbarContent");
     const minCardSize = Number(sizeRange.min);
     const maxCardSize = Number(sizeRange.max);
 
     function canUpload() {
       return Boolean(currentUser && currentUser.uid === ADMIN_UID);
     }
+
+    function setToolbarExpanded(isExpanded) {
+      toolbarContent.hidden = !isExpanded;
+      toolbarToggle.setAttribute("aria-expanded", String(isExpanded));
+      toolbarToggle.textContent = isExpanded ? "メニューを閉じる" : "メニューを開く";
+    }
+
 
     function setMessage(message) {
       uploadNote.textContent = message;
@@ -517,6 +586,7 @@
         const tags = itemTags(item).map((value) => `<span class="tag-chip">${escapeHtml(value)}</span>`).join("");
         const src = escapeHtml(item.imageUrl);
         const canEditTags = canUpload();
+        const deleteControl = canEditTags ? `<button class="delete-button" type="button" data-delete-index="${index}" aria-label="${title}を削除">画像を削除</button>` : "";
 
         return `
           <article class="viewer-card">
@@ -529,6 +599,7 @@
                 <input class="tag-input" name="tag" type="text" placeholder="タグを追加" autocomplete="off" aria-label="追加するタグ" ${canEditTags ? "" : "disabled"}>
                 <button class="tag-submit" type="submit" ${canEditTags ? "" : "disabled"}>追加</button>
               </form>
+              ${deleteControl}
             </div>
           </article>
         `;
@@ -559,6 +630,34 @@
       if (!file.type.startsWith("image/")) return `${file.name || "選択ファイル"}は画像ファイルではありません。`;
       if (file.size > MAX_IMAGE_SIZE_BYTES) return `${file.name || "画像"}はサイズ上限（10MB）を超えています。`;
       return "";
+    }
+
+    async function deleteMaterial(index) {
+      if (!canUpload()) {
+        setMessage("削除には管理者Googleアカウントでのログインが必要です。");
+        return;
+      }
+
+      const item = materials[index];
+      if (!item) return;
+
+      const title = item.title || item.originalFileName || "この画像";
+      if (!window.confirm(`${title}を削除しますか？この操作は元に戻せません。`)) return;
+
+      try {
+        if (item.storagePath) {
+          try {
+            await deleteObject(ref(storage, item.storagePath));
+          } catch (error) {
+            if (error?.code !== "storage/object-not-found") throw error;
+          }
+        }
+        await deleteDoc(doc(db, "materials", item.id));
+        showSuccessMessage(`${title}を削除しました。`);
+      } catch (error) {
+        console.error("Material deletion failed", error);
+        showFirebaseError("画像削除", error);
+      }
     }
 
     async function uploadImageFiles(files, sourceLabel = "Upload") {
@@ -689,13 +788,23 @@
       }
     });
 
-    gallery.addEventListener("click", (event) => {
+    gallery.addEventListener("click", async (event) => {
+      const deleteButton = event.target.closest(".delete-button");
+      if (deleteButton) {
+        await deleteMaterial(Number(deleteButton.dataset.deleteIndex));
+        return;
+      }
+
       const button = event.target.closest(".image-button");
       if (button) maximizeFromList(Number(button.dataset.index));
     });
 
     operationStatus.addEventListener("click", (event) => {
       if (event.target.closest(".status-close")) clearOperationStatus();
+    });
+
+    toolbarToggle.addEventListener("click", () => {
+      setToolbarExpanded(toolbarContent.hidden);
     });
 
     sizeRange.addEventListener("input", (event) => applyCardSize(event.target.value));

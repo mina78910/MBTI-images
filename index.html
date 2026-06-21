@@ -33,6 +33,7 @@
 
     button, input, select { font: inherit; }
 
+
     .sr-only {
       position: absolute;
       width: 1px;
@@ -254,6 +255,124 @@
     }
 
     .tag-info-panel[hidden] { display: none; }
+
+    .tag-picker {
+      position: relative;
+      min-width: min(100%, 320px);
+    }
+
+    .tag-picker-button {
+      width: 100%;
+      border: 1px solid rgba(104, 115, 134, 0.24);
+      border-radius: 999px;
+      padding: 11px 16px;
+      color: var(--accent);
+      background: rgba(111, 93, 231, 0.1);
+      font-weight: 950;
+      cursor: pointer;
+      text-align: center;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    }
+
+    .tag-picker-button:hover, .tag-picker-button:focus-visible {
+      border-color: var(--accent);
+      background: rgba(111, 93, 231, 0.16);
+      box-shadow: 0 0 0 4px var(--ring);
+      outline: none;
+    }
+
+    .tag-picker-panel {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 10px);
+      z-index: 30;
+      display: grid;
+      gap: 12px;
+      width: min(92vw, 760px);
+      max-height: min(70vh, 560px);
+      overflow: auto;
+      padding: 16px;
+      border: 1px solid rgba(104, 115, 134, 0.22);
+      border-radius: 22px;
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.97);
+      box-shadow: 0 22px 58px rgba(42, 39, 58, 0.2);
+    }
+
+    .tag-picker-panel[hidden] { display: none; }
+
+    .tag-picker-heading {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .tag-picker-title {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 950;
+    }
+
+    .tag-picker-help {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.86rem;
+      font-weight: 800;
+      line-height: 1.5;
+    }
+
+    .tag-picker-close {
+      flex: 0 0 auto;
+      display: inline-grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border: 0;
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgba(104, 115, 134, 0.12);
+      font-weight: 950;
+      cursor: pointer;
+    }
+
+    .tag-picker-filter {
+      width: 100%;
+      border: 1px solid rgba(104, 115, 134, 0.24);
+      border-radius: 999px;
+      padding: 11px 14px;
+      outline: none;
+    }
+
+    .tag-picker-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      align-content: start;
+    }
+
+    .tag-option-button {
+      border: 0;
+      border-radius: 999px;
+      padding: 8px 12px;
+      color: var(--ink);
+      background: rgba(39, 49, 63, 0.09);
+      font-size: 0.86rem;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .tag-option-button:hover, .tag-option-button:focus-visible {
+      color: white;
+      background: var(--accent);
+      outline: none;
+    }
+
+    .tag-picker-empty {
+      margin: 0;
+      color: var(--muted);
+      font-weight: 800;
+    }
 
     .search-control input, .sort-select { width: 100%; }
 
@@ -517,6 +636,8 @@
       .size-control { grid-template-columns: auto minmax(120px, 1fr) auto; }
       .auth-actions { width: 100%; }
       .upload-control { justify-content: center; width: 100%; }
+      .tag-picker { width: 100%; }
+      .tag-picker-panel { left: 0; right: auto; width: calc(100vw - 24px); }
     }
   </style>
 </head>
@@ -546,6 +667,21 @@
         <div class="search-control">
           <label for="excludeSearchInput">検索除外タグ</label>
           <input id="excludeSearchInput" type="search" placeholder="例: 古い、重複、不要" autocomplete="off" aria-label="除外したいタグで資料を絞り込み">
+        </div>
+        <div class="search-control tag-picker">
+          <label for="tagPickerButton">タグ一覧</label>
+          <button id="tagPickerButton" class="tag-picker-button" type="button" aria-expanded="false" aria-controls="tagPickerPanel">全タグから選ぶ</button>
+          <div id="tagPickerPanel" class="tag-picker-panel" role="dialog" aria-modal="false" aria-labelledby="tagPickerTitle" hidden>
+            <div class="tag-picker-heading">
+              <div>
+                <p id="tagPickerTitle" class="tag-picker-title">全タグ一覧</p>
+                <p class="tag-picker-help">登録済み画像のタグを重複なしで表示します。クリックすると「タグ検索」に追加されます。</p>
+              </div>
+              <button id="tagPickerClose" class="tag-picker-close" type="button" aria-label="タグ一覧を閉じる">×</button>
+            </div>
+            <input id="tagPickerFilter" class="tag-picker-filter" type="search" placeholder="一覧内を絞り込み" autocomplete="off" aria-label="タグ一覧内を絞り込み">
+            <div id="tagPickerOptions" class="tag-picker-options" aria-label="選択できるタグ一覧"></div>
+          </div>
         </div>
       </div>
       <div id="toolbarContent" class="toolbar-content" hidden>
@@ -629,6 +765,11 @@
     const toolbarContent = document.querySelector("#toolbarContent");
     const tagInfoButton = document.querySelector("#tagInfoButton");
     const tagInfoPanel = document.querySelector("#tagInfoPanel");
+    const tagPickerButton = document.querySelector("#tagPickerButton");
+    const tagPickerPanel = document.querySelector("#tagPickerPanel");
+    const tagPickerClose = document.querySelector("#tagPickerClose");
+    const tagPickerFilter = document.querySelector("#tagPickerFilter");
+    const tagPickerOptions = document.querySelector("#tagPickerOptions");
     const searchParams = new URLSearchParams(window.location.search);
     const initialTagQuery = searchParams.get("tag") || searchParams.get("tags") || "";
     const initialExcludeTagQuery = searchParams.get("exclude") || searchParams.get("excludeTags") || "";
@@ -648,6 +789,46 @@
     function setTagInfoExpanded(isExpanded) {
       tagInfoPanel.hidden = !isExpanded;
       tagInfoButton.setAttribute("aria-expanded", String(isExpanded));
+    }
+
+    function allUniqueTags() {
+      const tagMap = new Map();
+      materials.forEach((item) => {
+        itemTags(item).forEach((tag) => {
+          const normalizedTag = String(tag || "").trim();
+          const key = normalizedTag.toLowerCase();
+          if (normalizedTag && !tagMap.has(key)) tagMap.set(key, normalizedTag);
+        });
+      });
+      return [...tagMap.values()].sort((a, b) => a.localeCompare(b, "ja", { sensitivity: "base" }));
+    }
+
+    function setTagPickerExpanded(isExpanded) {
+      tagPickerPanel.hidden = !isExpanded;
+      tagPickerButton.setAttribute("aria-expanded", String(isExpanded));
+      if (isExpanded) {
+        renderTagPicker();
+        window.requestAnimationFrame(() => tagPickerFilter.focus());
+      }
+    }
+
+    function addSearchTag(tag) {
+      const terms = splitTagQuery(searchInput.value);
+      if (!terms.includes(tag.toLowerCase())) {
+        searchInput.value = [...searchInput.value.trim().split(/[\s,、]+/).filter(Boolean), tag].join(" ");
+      }
+      syncSearchQueryToUrl();
+      renderGallery();
+    }
+
+    function renderTagPicker() {
+      const allTags = allUniqueTags();
+      const filterText = tagPickerFilter.value.trim().toLowerCase();
+      const tags = allTags.filter((tag) => tag.toLowerCase().includes(filterText));
+      tagPickerButton.textContent = allTags.length ? `全タグから選ぶ（${allTags.length}件）` : "全タグから選ぶ";
+      tagPickerOptions.innerHTML = tags.length
+        ? tags.map((tag) => `<button class="tag-option-button" type="button" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`).join("")
+        : `<p class="tag-picker-empty">${allTags.length ? "条件に一致するタグがありません。" : "まだ登録済みタグがありません。"}</p>`;
     }
 
     function syncSearchQueryToUrl() {
@@ -777,6 +958,7 @@
     }
 
     function renderGallery() {
+      renderTagPicker();
       const queryText = searchInput.value.trim().toLowerCase();
       const excludeQueryText = excludeSearchInput.value.trim().toLowerCase();
       const visibleItems = visibleEntries();
@@ -1204,9 +1386,34 @@
       setTagInfoExpanded(tagInfoPanel.hidden);
     });
 
+    tagPickerButton.addEventListener("click", () => {
+      setTagPickerExpanded(tagPickerPanel.hidden);
+    });
+
+    tagPickerClose.addEventListener("click", () => {
+      setTagPickerExpanded(false);
+      tagPickerButton.focus();
+    });
+
+    tagPickerFilter.addEventListener("input", renderTagPicker);
+
+    tagPickerOptions.addEventListener("click", (event) => {
+      const button = event.target.closest(".tag-option-button");
+      if (!button) return;
+      addSearchTag(button.dataset.tag);
+      setTagPickerExpanded(false);
+      searchInput.focus();
+    });
+
     document.addEventListener("click", (event) => {
-      if (tagInfoPanel.hidden || event.target.closest(".tag-info-wrapper")) return;
-      setTagInfoExpanded(false);
+      if (!tagInfoPanel.hidden && !event.target.closest(".tag-info-wrapper")) setTagInfoExpanded(false);
+      if (!tagPickerPanel.hidden && !event.target.closest(".tag-picker")) setTagPickerExpanded(false);
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape" || tagPickerPanel.hidden) return;
+      setTagPickerExpanded(false);
+      tagPickerButton.focus();
     });
 
     sizeRange.addEventListener("input", (event) => applyCardSize(event.target.value));

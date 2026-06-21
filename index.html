@@ -33,6 +33,18 @@
 
     button, input { font: inherit; }
 
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
     button:disabled {
       cursor: not-allowed;
       opacity: 0.58;
@@ -374,16 +386,34 @@
       cursor: pointer;
     }
 
-    .delete-button {
+    .card-admin-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .replace-control, .delete-button {
       justify-self: start;
       border: 0;
       border-radius: 999px;
       padding: 8px 12px;
-      color: #842029;
-      background: rgba(220, 53, 69, 0.12);
       font-size: 0.82rem;
       font-weight: 950;
       cursor: pointer;
+    }
+
+    .replace-control {
+      color: var(--accent);
+      background: rgba(111, 93, 231, 0.12);
+    }
+
+    .replace-control:hover, .replace-control:focus-visible {
+      background: rgba(111, 93, 231, 0.2);
+    }
+
+    .delete-button {
+      color: #842029;
+      background: rgba(220, 53, 69, 0.12);
     }
 
     .delete-button:hover, .delete-button:focus-visible {
@@ -471,6 +501,7 @@
     const materials = [];
     let currentUser = null;
     let isUploading = false;
+    let replacingMaterialId = "";
 
     const gallery = document.querySelector("#gallery");
     const sizeRange = document.querySelector("#sizeRange");
@@ -586,7 +617,15 @@
         const tags = itemTags(item).map((value) => `<span class="tag-chip">${escapeHtml(value)}</span>`).join("");
         const src = escapeHtml(item.imageUrl);
         const canEditTags = canUpload();
-        const deleteControl = canEditTags ? `<button class="delete-button" type="button" data-delete-index="${index}" aria-label="${title}を削除">画像を削除</button>` : "";
+        const adminControls = canEditTags ? `
+          <div class="card-admin-actions">
+            <label class="replace-control" for="replace-${escapeHtml(item.id)}" aria-label="${title}を上書き">
+              画像を上書き
+              <input id="replace-${escapeHtml(item.id)}" class="sr-only replace-input" type="file" accept="image/*" data-replace-index="${index}">
+            </label>
+            <button class="delete-button" type="button" data-delete-index="${index}" aria-label="${title}を削除">画像を削除</button>
+          </div>
+        ` : "";
 
         return `
           <article class="viewer-card">
@@ -599,7 +638,7 @@
                 <input class="tag-input" name="tag" type="text" placeholder="タグを追加" autocomplete="off" aria-label="追加するタグ" ${canEditTags ? "" : "disabled"}>
                 <button class="tag-submit" type="submit" ${canEditTags ? "" : "disabled"}>追加</button>
               </form>
-              ${deleteControl}
+              ${adminControls}
             </div>
           </article>
         `;
@@ -607,7 +646,7 @@
     }
 
     function updateAuthUi() {
-      const uploadAllowed = canUpload() && !isUploading;
+      const uploadAllowed = canUpload() && !isUploading && !replacingMaterialId;
       imageUpload.disabled = !uploadAllowed;
       uploadControl.setAttribute("aria-disabled", String(!uploadAllowed));
       uploadLabel.textContent = isUploading ? "アップロード中..." : "画像を追加";
@@ -616,7 +655,8 @@
       authStatus.textContent = currentUser ? `${currentUser.displayName || "ログイン中"}でログイン中` : "ログインしていません";
       if (!currentUser) setMessage("閲覧はログイン不要です。アップロードするにはGoogleログインしてください。");
       else if (!canUpload()) setMessage("このGoogleアカウントにはアップロード権限がありません。管理者UIDを設定してください。");
-      else setMessage("画像ファイルを選択、または Ctrl+V / ⌘V で貼り付けてアップロードできます。");
+      else if (replacingMaterialId) setMessage("画像を上書き中です。完了までお待ちください。");
+      else setMessage("画像ファイルを選択、または Ctrl+V / ⌘V で貼り付けてアップロードできます。各画像の「画像を上書き」から差し替えもできます。");
       renderGallery();
     }
 
@@ -657,6 +697,73 @@
       } catch (error) {
         console.error("Material deletion failed", error);
         showFirebaseError("画像削除", error);
+      }
+    }
+
+    async function replaceMaterialImage(index, file) {
+      if (!canUpload()) {
+        setMessage("画像の上書きには管理者Googleアカウントでのログインが必要です。");
+        return false;
+      }
+
+      const item = materials[index];
+      if (!item || !file) return false;
+
+      const validationMessage = validateImageFile(file);
+      if (validationMessage) {
+        setMessage(validationMessage);
+        return false;
+      }
+
+      const previousTitle = item.title || item.originalFileName || "この画像";
+      const extension = file.name.includes(".") ? file.name.split(".").pop().toLowerCase() : "bin";
+      const fallbackName = `${crypto.randomUUID()}.${extension}`;
+      const storagePath = item.storagePath || `users/${currentUser.uid}/images/${fallbackName}`;
+      const storageRef = ref(storage, storagePath);
+
+      replacingMaterialId = item.id;
+      updateAuthUi();
+      setMessage(`${previousTitle}を上書き中です...`);
+
+      try {
+        try {
+          await uploadBytes(storageRef, file, { contentType: file.type });
+        } catch (error) {
+          console.error("Firebase replacement failed at Storage upload", error);
+          showFirebaseError("Storage上書きアップロード", error);
+          throw error;
+        }
+
+        let imageUrl = "";
+        try {
+          imageUrl = await getDownloadURL(storageRef);
+        } catch (error) {
+          console.error("Firebase replacement failed at download URL retrieval", error);
+          showFirebaseError("上書き後ダウンロードURL取得", error);
+          throw error;
+        }
+
+        try {
+          await updateDoc(doc(db, "materials", item.id), {
+            title: file.name?.replace(/\.[^/.]+$/, "") || item.title || "上書き画像",
+            imageUrl,
+            storagePath,
+            originalFileName: file.name || item.originalFileName || fallbackName,
+            updatedAt: serverTimestamp()
+          });
+        } catch (error) {
+          console.error("Firebase replacement failed at Firestore update", error);
+          showFirebaseError("Firestore上書き更新", error);
+          throw error;
+        }
+
+        showSuccessMessage(`${previousTitle}を${file.name || "選択した画像"}で上書きしました。`);
+        return true;
+      } catch (error) {
+        return false;
+      } finally {
+        replacingMaterialId = "";
+        updateAuthUi();
       }
     }
 
@@ -786,6 +893,14 @@
         console.error("Tag update failed", error);
         showFirebaseError("タグ更新", error);
       }
+    });
+
+    gallery.addEventListener("change", async (event) => {
+      const input = event.target.closest(".replace-input");
+      if (!input) return;
+      const [file] = input.files || [];
+      await replaceMaterialImage(Number(input.dataset.replaceIndex), file);
+      input.value = "";
     });
 
     gallery.addEventListener("click", async (event) => {

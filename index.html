@@ -525,29 +525,31 @@
     <section class="toolbar viewer-card" aria-label="一覧操作">
       <div class="toolbar-header">
         <p class="toolbar-title">表示・検索メニュー</p>
-        <button id="toolbarToggle" class="toolbar-toggle" type="button" aria-expanded="false" aria-controls="toolbarContent">メニューを開く</button>
+        <button id="toolbarToggle" class="toolbar-toggle" type="button" aria-expanded="false" aria-controls="toolbarContent">さらにメニューを開く</button>
+      </div>
+      <div class="toolbar-actions">
+        <label class="size-control" for="sizeRange">
+          <span>小</span>
+          <input id="sizeRange" type="range" min="160" max="1180" step="20" value="240" aria-label="一覧画像の大きさ">
+          <span>大</span>
+        </label>
+        <div class="search-control">
+          <div class="search-label-row">
+            <label for="searchInput">タグ検索</label>
+            <span class="tag-info-wrapper">
+              <button id="tagInfoButton" class="tag-info-button" type="button" aria-expanded="false" aria-controls="tagInfoPanel" aria-label="タグ検索の仕様を表示">i</button>
+              <span id="tagInfoPanel" class="tag-info-panel" role="status" hidden>タグ検索は大文字・小文字を区別しません。検索中のタグはURLにも保存されるため、そのURLを共有すると同じタグ検索状態で開けます。</span>
+            </span>
+          </div>
+          <input id="searchInput" type="search" placeholder="例: NT、内向、チーム" autocomplete="off" aria-label="タグで資料を検索">
+        </div>
+        <div class="search-control">
+          <label for="excludeSearchInput">検索除外タグ</label>
+          <input id="excludeSearchInput" type="search" placeholder="例: 古い、重複、不要" autocomplete="off" aria-label="除外したいタグで資料を絞り込み">
+        </div>
       </div>
       <div id="toolbarContent" class="toolbar-content" hidden>
         <div class="toolbar-actions">
-          <label class="size-control" for="sizeRange">
-            <span>小</span>
-            <input id="sizeRange" type="range" min="160" max="1180" step="20" value="240" aria-label="一覧画像の大きさ">
-            <span>大</span>
-          </label>
-          <div class="search-control">
-            <div class="search-label-row">
-              <label for="searchInput">タグ検索</label>
-              <span class="tag-info-wrapper">
-                <button id="tagInfoButton" class="tag-info-button" type="button" aria-expanded="false" aria-controls="tagInfoPanel" aria-label="タグ検索の仕様を表示">i</button>
-                <span id="tagInfoPanel" class="tag-info-panel" role="status" hidden>タグ検索は大文字・小文字を区別しません。検索中のタグはURLにも保存されるため、そのURLを共有すると同じタグ検索状態で開けます。</span>
-              </span>
-            </div>
-            <input id="searchInput" type="search" placeholder="例: NT、内向、チーム" autocomplete="off" aria-label="タグで資料を検索">
-          </div>
-          <div class="search-control">
-            <label for="excludeSearchInput">検索除外タグ</label>
-            <input id="excludeSearchInput" type="search" placeholder="例: 古い、重複、不要" autocomplete="off" aria-label="除外したいタグで資料を絞り込み">
-          </div>
           <div class="sort-tools">
             <label class="sort-control" for="sortSelect">
               <span>表示順</span>
@@ -640,7 +642,7 @@
     function setToolbarExpanded(isExpanded) {
       toolbarContent.hidden = !isExpanded;
       toolbarToggle.setAttribute("aria-expanded", String(isExpanded));
-      toolbarToggle.textContent = isExpanded ? "メニューを閉じる" : "メニューを開く";
+      toolbarToggle.textContent = isExpanded ? "メニューを閉じる" : "さらにメニューを開く";
     }
 
     function setTagInfoExpanded(isExpanded) {

@@ -544,6 +544,10 @@
             </div>
             <input id="searchInput" type="search" placeholder="例: NT、内向、チーム" autocomplete="off" aria-label="タグで資料を検索">
           </div>
+          <div class="search-control">
+            <label for="excludeSearchInput">検索除外タグ</label>
+            <input id="excludeSearchInput" type="search" placeholder="例: 古い、重複、不要" autocomplete="off" aria-label="除外したいタグで資料を絞り込み">
+          </div>
           <div class="sort-tools">
             <label class="sort-control" for="sortSelect">
               <span>表示順</span>
@@ -609,6 +613,7 @@
     const sizeRange = document.querySelector("#sizeRange");
     const imageUpload = document.querySelector("#imageUpload");
     const searchInput = document.querySelector("#searchInput");
+    const excludeSearchInput = document.querySelector("#excludeSearchInput");
     const uploadNote = document.querySelector("#uploadNote");
     const authStatus = document.querySelector("#authStatus");
     const loginButton = document.querySelector("#loginButton");
@@ -624,6 +629,7 @@
     const tagInfoPanel = document.querySelector("#tagInfoPanel");
     const searchParams = new URLSearchParams(window.location.search);
     const initialTagQuery = searchParams.get("tag") || searchParams.get("tags") || "";
+    const initialExcludeTagQuery = searchParams.get("exclude") || searchParams.get("excludeTags") || "";
     const minCardSize = Number(sizeRange.min);
     const maxCardSize = Number(sizeRange.max);
 
@@ -644,10 +650,14 @@
 
     function syncSearchQueryToUrl() {
       const queryText = searchInput.value.trim();
+      const excludeQueryText = excludeSearchInput.value.trim();
       const nextUrl = new URL(window.location.href);
       if (queryText) nextUrl.searchParams.set("tag", queryText);
       else nextUrl.searchParams.delete("tag");
+      if (excludeQueryText) nextUrl.searchParams.set("exclude", excludeQueryText);
+      else nextUrl.searchParams.delete("exclude");
       nextUrl.searchParams.delete("tags");
+      nextUrl.searchParams.delete("excludeTags");
       window.history.replaceState({}, "", nextUrl);
     }
 
@@ -717,9 +727,20 @@
       return Array.isArray(item.tags) ? item.tags : [];
     }
 
-    function matchesSearch(item, queryText) {
-      if (!queryText) return true;
-      return itemTags(item).some((tag) => tag.toLowerCase().includes(queryText));
+    function splitTagQuery(queryText) {
+      return queryText
+        .split(/[\s,、]+/)
+        .map((value) => value.trim().toLowerCase())
+        .filter(Boolean);
+    }
+
+    function matchesSearch(item, includeQueryText, excludeQueryText) {
+      const tags = itemTags(item).map((tag) => tag.toLowerCase());
+      const includeTerms = splitTagQuery(includeQueryText);
+      const excludeTerms = splitTagQuery(excludeQueryText);
+      const hasIncludedTag = !includeTerms.length || includeTerms.every((term) => tags.some((tag) => tag.includes(term)));
+      const hasExcludedTag = excludeTerms.some((term) => tags.some((tag) => tag.includes(term)));
+      return hasIncludedTag && !hasExcludedTag;
     }
 
     function timestampMillis(value) {
@@ -747,17 +768,19 @@
 
     function visibleEntries() {
       const queryText = searchInput.value.trim().toLowerCase();
+      const excludeQueryText = excludeSearchInput.value.trim().toLowerCase();
       return sortedMaterials()
         .map((item, displayIndex) => ({ item, displayIndex, materialIndex: materials.findIndex((material) => material.id === item.id) }))
-        .filter(({ item }) => matchesSearch(item, queryText));
+        .filter(({ item }) => matchesSearch(item, queryText, excludeQueryText));
     }
 
     function renderGallery() {
       const queryText = searchInput.value.trim().toLowerCase();
+      const excludeQueryText = excludeSearchInput.value.trim().toLowerCase();
       const visibleItems = visibleEntries();
 
       if (!visibleItems.length) {
-        gallery.innerHTML = `<p class="empty-message">${queryText ? "一致するタグの画像がありません。別のキーワードで検索してください。" : "Firestoreに保存された画像はまだありません。"}</p>`;
+        gallery.innerHTML = `<p class="empty-message">${queryText || excludeQueryText ? "条件に一致する画像がありません。検索タグや除外タグを変更してください。" : "Firestoreに保存された画像はまだありません。"}</p>`;
         saveOrderButton.disabled = true;
         return;
       }
@@ -766,6 +789,7 @@
         const title = escapeHtml(item.title || item.originalFileName || "無題の画像");
         const tags = itemTags(item).map((value) => `<span class="tag-chip">${escapeHtml(value)}</span>`).join("");
         const src = escapeHtml(item.imageUrl);
+        const isLoggedIn = Boolean(currentUser);
         const canEditTags = canUpload();
         const adminControls = canEditTags ? `
           <div class="card-admin-actions">
@@ -786,10 +810,11 @@
             </button>
             <div class="card-details">
               <div class="tag-list" aria-label="${title}のタグ">${tags || "<span class=\"upload-note\">タグなし</span>"}</div>
+              ${isLoggedIn ? `
               <form class="tag-form" data-index="${materialIndex}" aria-label="${title}にタグを追加">
                 <input class="tag-input" name="tag" type="text" placeholder="タグを追加" autocomplete="off" aria-label="追加するタグ" ${canEditTags ? "" : "disabled"}>
                 <button class="tag-submit" type="submit" ${canEditTags ? "" : "disabled"}>追加</button>
-              </form>
+              </form>` : ""}
               ${adminControls}
             </div>
           </article>
@@ -801,6 +826,7 @@
     function updateAuthUi() {
       const uploadAllowed = canUpload() && !isUploading && !replacingMaterialId;
       imageUpload.disabled = !uploadAllowed;
+      uploadControl.hidden = !currentUser;
       uploadControl.setAttribute("aria-disabled", String(!uploadAllowed));
       uploadLabel.textContent = isUploading ? "アップロード中..." : "画像を追加";
       loginButton.hidden = Boolean(currentUser);
@@ -1186,10 +1212,18 @@
       syncSearchQueryToUrl();
       renderGallery();
     });
+    excludeSearchInput.addEventListener("input", () => {
+      syncSearchQueryToUrl();
+      renderGallery();
+    });
     sortSelect.addEventListener("change", renderGallery);
     saveOrderButton.addEventListener("click", saveCurrentOrder);
     if (initialTagQuery) {
       searchInput.value = initialTagQuery;
+      setToolbarExpanded(true);
+    }
+    if (initialExcludeTagQuery) {
+      excludeSearchInput.value = initialExcludeTagQuery;
       setToolbarExpanded(true);
     }
     syncSearchQueryToUrl();

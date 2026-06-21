@@ -33,6 +33,21 @@
 
     button, input { font: inherit; }
 
+    input[type="search"], .tag-input {
+      border: 1px solid rgba(104, 115, 134, 0.24);
+      border-radius: 999px;
+      padding: 11px 14px;
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.82);
+      outline: none;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    input[type="search"]:focus, .tag-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--ring);
+    }
+
     .paste-highlight {
       outline: 4px solid var(--ring);
       outline-offset: 4px;
@@ -110,11 +125,27 @@
       white-space: nowrap;
     }
 
-    .upload-note {
+    .search-control {
+      display: grid;
+      gap: 7px;
+      min-width: min(100%, 320px);
+      color: var(--muted);
+      font-weight: 900;
+    }
+
+    .search-control input { width: 100%; }
+
+    .upload-note, .empty-message {
       margin: 0;
       color: var(--muted);
       font-size: 0.92rem;
       font-weight: 700;
+    }
+
+    .empty-message {
+      grid-column: 1 / -1;
+      padding: 28px;
+      text-align: center;
     }
 
     .size-control input[type="range"] {
@@ -177,6 +208,53 @@
       font-weight: 900;
     }
 
+    .card-details {
+      display: grid;
+      gap: 12px;
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.64);
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-height: 28px;
+    }
+
+    .tag-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      color: white;
+      background: rgba(39, 49, 63, 0.72);
+      font-size: 0.78rem;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .tag-form {
+      display: flex;
+      gap: 8px;
+    }
+
+    .tag-input {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .tag-submit {
+      border: 0;
+      border-radius: 999px;
+      padding: 0 13px;
+      color: white;
+      background: var(--accent);
+      font-weight: 900;
+      cursor: pointer;
+    }
+
 
     @media (max-width: 560px) {
       .app-shell { padding: 12px; }
@@ -195,6 +273,10 @@
           <input id="sizeRange" type="range" min="160" max="1180" step="20" value="240" aria-label="一覧画像の大きさ">
           <span>大</span>
         </label>
+        <label class="search-control" for="searchInput">
+          <span>タグ検索</span>
+          <input id="searchInput" type="search" placeholder="例: NT、内向、チーム" autocomplete="off" aria-label="タグで資料を検索">
+        </label>
         <label class="upload-control" for="imageUpload">
           <span>画像を追加</span>
           <input id="imageUpload" type="file" accept="image/*" multiple aria-label="追加する画像を選択">
@@ -212,15 +294,15 @@
     ];
 
     const materials = [
-      ["サンプル", "アップロードされたサンプル画像", "Sample", "sample.jpg", "https://raw.githubusercontent.com/mina78910/MBTI-images/main/sample.jpg"],
-      ["全体像", "16タイプを4つの気質グループで眺める導入資料", "NT / NF / SJ / SP"],
-      ["内向・外向", "エネルギーの向きの違いを会話の場面で比較", "E / I"],
-      ["感覚・直観", "情報の受け取り方を地図とアイデアで表現", "S / N"],
-      ["思考・感情", "判断軸の違いをチーム相談の例で確認", "T / F"],
-      ["判断・知覚", "予定の立て方と柔軟性をワーク風に整理", "J / P"],
-      ["相性メモ", "タイプ差を尊重しながら話すためのヒント", "Tips"],
-      ["チーム配置", "役割分担を考えるためのテーブル用資料", "Team"],
-      ["振り返り", "自己理解を深める問いをまとめた共有カード", "Review"]
+      ["サンプル", "アップロードされたサンプル画像", "Sample", "sample.jpg", "https://raw.githubusercontent.com/mina78910/MBTI-images/main/sample.jpg", ["サンプル", "MBTI", "4指標", "比較"]],
+      ["全体像", "16タイプを4つの気質グループで眺める導入資料", "NT / NF / SJ / SP", undefined, undefined, ["NT", "NF", "SJ", "SP", "気質"]],
+      ["内向・外向", "エネルギーの向きの違いを会話の場面で比較", "E / I", undefined, undefined, ["外向", "内向", "エネルギー", "会話"]],
+      ["感覚・直観", "情報の受け取り方を地図とアイデアで表現", "S / N", undefined, undefined, ["感覚", "直観", "情報収集", "アイデア"]],
+      ["思考・感情", "判断軸の違いをチーム相談の例で確認", "T / F", undefined, undefined, ["思考", "感情", "判断", "チーム"]],
+      ["判断・知覚", "予定の立て方と柔軟性をワーク風に整理", "J / P", undefined, undefined, ["判断", "知覚", "予定", "柔軟性"]],
+      ["相性メモ", "タイプ差を尊重しながら話すためのヒント", "Tips", undefined, undefined, ["相性", "コミュニケーション", "尊重"]],
+      ["チーム配置", "役割分担を考えるためのテーブル用資料", "Team", undefined, undefined, ["チーム", "役割分担", "配置"]],
+      ["振り返り", "自己理解を深める問いをまとめた共有カード", "Review", undefined, undefined, ["振り返り", "自己理解", "問い"]]
     ];
 
     function svgData([title, description, tag], index) {
@@ -275,6 +357,7 @@
     const gallery = document.querySelector("#gallery");
     const sizeRange = document.querySelector("#sizeRange");
     const imageUpload = document.querySelector("#imageUpload");
+    const searchInput = document.querySelector("#searchInput");
     const uploadNote = document.querySelector("#uploadNote");
     const minCardSize = Number(sizeRange.min);
     const maxCardSize = Number(sizeRange.max);
@@ -286,10 +369,30 @@
       sizeRange.value = clampedSize;
     }
 
+    function itemTags(item) {
+      return Array.isArray(item[5]) ? item[5] : [item[2]].filter(Boolean);
+    }
+
+    function matchesSearch(item, query) {
+      if (!query) return true;
+      return itemTags(item).some((tag) => tag.toLowerCase().includes(query));
+    }
+
     function renderGallery() {
-      gallery.innerHTML = materials.map((item, index) => {
+      const query = searchInput.value.trim().toLowerCase();
+      const visibleItems = materials
+        .map((item, index) => ({ item, index }))
+        .filter(({ item }) => matchesSearch(item, query));
+
+      if (!visibleItems.length) {
+        gallery.innerHTML = `<p class="empty-message">一致するタグの画像がありません。別のキーワードで検索してください。</p>`;
+        return;
+      }
+
+      gallery.innerHTML = visibleItems.map(({ item, index }) => {
         const title = escapeHtml(item[0]);
         const tag = escapeHtml(item[2]);
+        const tags = itemTags(item).map((value) => `<span class="tag-chip">${escapeHtml(value)}</span>`).join("");
         const src = escapeHtml(imageSrc(item, index));
         const fallbackSrc = escapeHtml(item[4] || svgData(item, index));
         const finalFallbackSrc = escapeHtml(svgData(item, index));
@@ -299,6 +402,13 @@
             <button class="image-button" type="button" data-index="${index}" aria-label="${title}を表示">
               <div class="image-wrap"><img src="${src}" alt="${title}のサンプル資料" data-fallback-src="${fallbackSrc}" data-final-fallback-src="${finalFallbackSrc}"><span class="badge">${tag}</span></div>
             </button>
+            <div class="card-details">
+              <div class="tag-list" aria-label="${title}のタグ">${tags}</div>
+              <form class="tag-form" data-index="${index}" aria-label="${title}にタグを追加">
+                <input class="tag-input" name="tag" type="text" placeholder="タグを追加" autocomplete="off" aria-label="追加するタグ">
+                <button class="tag-submit" type="submit">追加</button>
+              </form>
+            </div>
           </article>
         `;
       }).join("");
@@ -315,6 +425,7 @@
     applyCardSize(sizeRange.value);
 
     sizeRange.addEventListener("input", (event) => applyCardSize(event.target.value));
+    searchInput.addEventListener("input", renderGallery);
 
     function addImageFiles(files, sourceLabel = "Upload") {
       const imageFiles = [...files].filter((file) => file.type.startsWith("image/"));
@@ -325,7 +436,7 @@
         const src = URL.createObjectURL(file);
         const defaultTitle = `${sourceLabel}画像 ${startIndex + offset + 1}`;
         const title = file.name?.replace(/\.[^/.]+$/, "") || defaultTitle;
-        materials.push([title, "このページ内で一時的に追加された画像", sourceLabel, src, src]);
+        materials.push([title, "このページ内で一時的に追加された画像", sourceLabel, src, src, [sourceLabel, "追加画像", title]]);
       });
 
       renderGallery();
@@ -364,6 +475,22 @@
         image.src = image.dataset.finalFallbackSrc;
       }
     }, true);
+
+    gallery.addEventListener("submit", (event) => {
+      const form = event.target.closest(".tag-form");
+      if (!form) return;
+      event.preventDefault();
+      const input = form.elements.tag;
+      const value = input.value.trim();
+      if (!value) return;
+      const item = materials[Number(form.dataset.index)];
+      const tags = itemTags(item);
+      if (!tags.some((tag) => tag.toLowerCase() === value.toLowerCase())) {
+        item[5] = [...tags, value];
+      }
+      input.value = "";
+      renderGallery();
+    });
 
     gallery.addEventListener("click", (event) => {
       const button = event.target.closest(".image-button");

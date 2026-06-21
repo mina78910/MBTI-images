@@ -31,7 +31,7 @@
         linear-gradient(135deg, #fbf7ef 0%, var(--bg) 55%, #eef7f7 100%);
     }
 
-    button, input { font: inherit; }
+    button, input, select { font: inherit; }
 
     .sr-only {
       position: absolute;
@@ -50,7 +50,7 @@
       opacity: 0.58;
     }
 
-    input[type="search"], .tag-input {
+    input[type="search"], .tag-input, .sort-select {
       border: 1px solid rgba(104, 115, 134, 0.24);
       border-radius: 999px;
       padding: 11px 14px;
@@ -60,7 +60,7 @@
       transition: border-color 0.18s ease, box-shadow 0.18s ease;
     }
 
-    input[type="search"]:focus, .tag-input:focus {
+    input[type="search"]:focus, .tag-input:focus, .sort-select:focus {
       border-color: var(--accent);
       box-shadow: 0 0 0 4px var(--ring);
     }
@@ -201,7 +201,7 @@
       white-space: nowrap;
     }
 
-    .search-control {
+    .search-control, .sort-control {
       display: grid;
       gap: 7px;
       min-width: min(100%, 320px);
@@ -209,7 +209,30 @@
       font-weight: 900;
     }
 
-    .search-control input { width: 100%; }
+    .search-control input, .sort-select { width: 100%; }
+
+    .sort-tools {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: end;
+    }
+
+    .sort-control {
+      min-width: min(100%, 240px);
+      color: var(--muted);
+      font-weight: 900;
+    }
+
+    .sort-save-button {
+      border: 0;
+      border-radius: 999px;
+      padding: 11px 16px;
+      color: white;
+      background: var(--accent);
+      font-weight: 950;
+      cursor: pointer;
+    }
 
     .upload-note, .empty-message {
       margin: 0;
@@ -392,7 +415,7 @@
       gap: 8px;
     }
 
-    .replace-control, .delete-button {
+    .replace-control, .delete-button, .move-button {
       justify-self: start;
       border: 0;
       border-radius: 999px;
@@ -419,6 +442,21 @@
     .delete-button:hover, .delete-button:focus-visible {
       background: rgba(220, 53, 69, 0.2);
     }
+
+    .move-button {
+      color: var(--muted);
+      background: rgba(104, 115, 134, 0.12);
+    }
+
+    .move-button:hover, .move-button:focus-visible {
+      background: rgba(104, 115, 134, 0.2);
+    }
+
+    .viewer-card[draggable="true"] { cursor: grab; }
+
+    .viewer-card.is-dragging { opacity: 0.52; }
+
+    .viewer-card.is-drop-target { outline: 4px solid var(--ring); outline-offset: -4px; }
 
 
     @media (max-width: 560px) {
@@ -454,6 +492,16 @@
             <span>タグ検索</span>
             <input id="searchInput" type="search" placeholder="例: NT、内向、チーム" autocomplete="off" aria-label="タグで資料を検索">
           </label>
+          <div class="sort-tools">
+            <label class="sort-control" for="sortSelect">
+              <span>表示順</span>
+              <select id="sortSelect" class="sort-select" aria-label="画像の表示順">
+                <option value="createdAt">作成日順</option>
+                <option value="custom">保存した並び順</option>
+              </select>
+            </label>
+            <button id="saveOrderButton" class="sort-save-button" type="button" disabled>現在の表示順で保存</button>
+          </div>
           <div class="auth-actions" aria-live="polite">
             <span id="authStatus">ログインしていません</span>
             <button id="loginButton" class="auth-button" type="button">Googleでログイン</button>
@@ -476,7 +524,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
-    import { getFirestore, addDoc, collection, deleteDoc, onSnapshot, orderBy, query, serverTimestamp, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+    import { getFirestore, addDoc, collection, deleteDoc, onSnapshot, query, serverTimestamp, updateDoc, doc, writeBatch } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
     import { deleteObject, getDownloadURL, getStorage, ref, uploadBytes } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-storage.js";
 
     const firebaseConfig = {
@@ -502,6 +550,8 @@
     let currentUser = null;
     let isUploading = false;
     let replacingMaterialId = "";
+    let draggedMaterialId = "";
+    let hasInitializedSort = false;
 
     const gallery = document.querySelector("#gallery");
     const sizeRange = document.querySelector("#sizeRange");
@@ -513,6 +563,8 @@
     const logoutButton = document.querySelector("#logoutButton");
     const uploadControl = document.querySelector("#uploadControl");
     const uploadLabel = document.querySelector("#uploadLabel");
+    const sortSelect = document.querySelector("#sortSelect");
+    const saveOrderButton = document.querySelector("#saveOrderButton");
     const operationStatus = document.querySelector("#operationStatus");
     const toolbarToggle = document.querySelector("#toolbarToggle");
     const toolbarContent = document.querySelector("#toolbarContent");
@@ -601,40 +653,71 @@
       return itemTags(item).some((tag) => tag.toLowerCase().includes(queryText));
     }
 
+    function timestampMillis(value) {
+      if (typeof value?.toMillis === "function") return value.toMillis();
+      if (typeof value?.seconds === "number") return value.seconds * 1000;
+      return 0;
+    }
+
+    function customOrderValue(item) {
+      return Number.isFinite(item.sortOrder) ? item.sortOrder : timestampMillis(item.createdAt);
+    }
+
+    function compareByTitle(a, b) {
+      return (a.title || a.originalFileName || "").localeCompare(b.title || b.originalFileName || "", "ja");
+    }
+
+    function sortedMaterials() {
+      return [...materials].sort((a, b) => {
+        if (sortSelect.value === "custom") {
+          return customOrderValue(a) - customOrderValue(b) || timestampMillis(a.createdAt) - timestampMillis(b.createdAt) || compareByTitle(a, b);
+        }
+        return timestampMillis(a.createdAt) - timestampMillis(b.createdAt) || compareByTitle(a, b);
+      });
+    }
+
+    function visibleEntries() {
+      const queryText = searchInput.value.trim().toLowerCase();
+      return sortedMaterials()
+        .map((item, displayIndex) => ({ item, displayIndex, materialIndex: materials.findIndex((material) => material.id === item.id) }))
+        .filter(({ item }) => matchesSearch(item, queryText));
+    }
+
     function renderGallery() {
       const queryText = searchInput.value.trim().toLowerCase();
-      const visibleItems = materials
-        .map((item, index) => ({ item, index }))
-        .filter(({ item }) => matchesSearch(item, queryText));
+      const visibleItems = visibleEntries();
 
       if (!visibleItems.length) {
         gallery.innerHTML = `<p class="empty-message">${queryText ? "一致するタグの画像がありません。別のキーワードで検索してください。" : "Firestoreに保存された画像はまだありません。"}</p>`;
+        saveOrderButton.disabled = true;
         return;
       }
 
-      gallery.innerHTML = visibleItems.map(({ item, index }) => {
+      gallery.innerHTML = visibleItems.map(({ item, materialIndex }, visibleIndex) => {
         const title = escapeHtml(item.title || item.originalFileName || "無題の画像");
         const tags = itemTags(item).map((value) => `<span class="tag-chip">${escapeHtml(value)}</span>`).join("");
         const src = escapeHtml(item.imageUrl);
         const canEditTags = canUpload();
         const adminControls = canEditTags ? `
           <div class="card-admin-actions">
+            <button class="move-button" type="button" data-move-index="${visibleIndex}" data-move-direction="-1" ${visibleIndex === 0 ? "disabled" : ""}>前へ</button>
+            <button class="move-button" type="button" data-move-index="${visibleIndex}" data-move-direction="1" ${visibleIndex === visibleItems.length - 1 ? "disabled" : ""}>後へ</button>
             <label class="replace-control" for="replace-${escapeHtml(item.id)}" aria-label="${title}を上書き">
               画像を上書き
-              <input id="replace-${escapeHtml(item.id)}" class="sr-only replace-input" type="file" accept="image/*" data-replace-index="${index}">
+              <input id="replace-${escapeHtml(item.id)}" class="sr-only replace-input" type="file" accept="image/*" data-replace-index="${materialIndex}">
             </label>
-            <button class="delete-button" type="button" data-delete-index="${index}" aria-label="${title}を削除">画像を削除</button>
+            <button class="delete-button" type="button" data-delete-index="${materialIndex}" aria-label="${title}を削除">画像を削除</button>
           </div>
         ` : "";
 
         return `
-          <article class="viewer-card">
-            <button class="image-button" type="button" data-index="${index}" aria-label="${title}を表示">
+          <article class="viewer-card" draggable="${canEditTags}" data-material-id="${escapeHtml(item.id)}">
+            <button class="image-button" type="button" data-index="${materialIndex}" aria-label="${title}を表示">
               <div class="image-wrap"><img src="${src}" alt="${title}"><span class="badge">${escapeHtml(item.originalFileName || "画像")}</span></div>
             </button>
             <div class="card-details">
               <div class="tag-list" aria-label="${title}のタグ">${tags || "<span class=\"upload-note\">タグなし</span>"}</div>
-              <form class="tag-form" data-index="${index}" aria-label="${title}にタグを追加">
+              <form class="tag-form" data-index="${materialIndex}" aria-label="${title}にタグを追加">
                 <input class="tag-input" name="tag" type="text" placeholder="タグを追加" autocomplete="off" aria-label="追加するタグ" ${canEditTags ? "" : "disabled"}>
                 <button class="tag-submit" type="submit" ${canEditTags ? "" : "disabled"}>追加</button>
               </form>
@@ -643,6 +726,7 @@
           </article>
         `;
       }).join("");
+      saveOrderButton.disabled = !canUpload() || !visibleItems.length;
     }
 
     function updateAuthUi() {
@@ -658,6 +742,65 @@
       else if (replacingMaterialId) setMessage("画像を上書き中です。完了までお待ちください。");
       else setMessage("画像ファイルを選択、または Ctrl+V / ⌘V で貼り付けてアップロードできます。各画像の「画像を上書き」から差し替えもできます。");
       renderGallery();
+    }
+
+    function resetMaterialsToCurrentDisplayOrder() {
+      materials.splice(0, materials.length, ...sortedMaterials());
+    }
+
+    function applyLocalCustomOrder() {
+      materials.forEach((item, index) => { item.sortOrder = index + 1; });
+    }
+
+    function moveVisibleItem(fromIndex, direction) {
+      const entries = visibleEntries();
+      const toIndex = fromIndex + direction;
+      if (toIndex < 0 || toIndex >= entries.length) return;
+      const fromMaterial = entries[fromIndex].item;
+      const toMaterial = entries[toIndex].item;
+      resetMaterialsToCurrentDisplayOrder();
+      const fromPosition = materials.findIndex((item) => item.id === fromMaterial.id);
+      const toPosition = materials.findIndex((item) => item.id === toMaterial.id);
+      if (fromPosition < 0 || toPosition < 0) return;
+      materials.splice(fromPosition, 1);
+      materials.splice(toPosition, 0, fromMaterial);
+      applyLocalCustomOrder();
+      sortSelect.value = "custom";
+      renderGallery();
+    }
+
+    function moveDraggedItem(targetMaterialId) {
+      if (!draggedMaterialId || draggedMaterialId === targetMaterialId) return;
+      resetMaterialsToCurrentDisplayOrder();
+      const fromPosition = materials.findIndex((item) => item.id === draggedMaterialId);
+      const toPosition = materials.findIndex((item) => item.id === targetMaterialId);
+      if (fromPosition < 0 || toPosition < 0) return;
+      const [draggedItem] = materials.splice(fromPosition, 1);
+      materials.splice(toPosition, 0, draggedItem);
+      applyLocalCustomOrder();
+      sortSelect.value = "custom";
+      renderGallery();
+    }
+
+    async function saveCurrentOrder() {
+      if (!canUpload()) {
+        setMessage("並び順の保存には管理者Googleアカウントでのログインが必要です。");
+        return;
+      }
+      const entries = visibleEntries();
+      if (!entries.length) return;
+      const batch = writeBatch(db);
+      entries.forEach(({ item }, index) => {
+        batch.update(doc(db, "materials", item.id), { sortOrder: index + 1, orderUpdatedAt: serverTimestamp() });
+      });
+      try {
+        await batch.commit();
+        sortSelect.value = "custom";
+        showSuccessMessage("現在表示されている順番を保存しました。次回以降もこの順番で表示できます。");
+      } catch (error) {
+        console.error("Order save failed", error);
+        showFirebaseError("並び順保存", error);
+      }
     }
 
     function maximizeFromList(index) {
@@ -905,6 +1048,12 @@
 
     gallery.addEventListener("click", async (event) => {
       const deleteButton = event.target.closest(".delete-button");
+      const moveButton = event.target.closest(".move-button");
+      if (moveButton) {
+        moveVisibleItem(Number(moveButton.dataset.moveIndex), Number(moveButton.dataset.moveDirection));
+        return;
+      }
+
       if (deleteButton) {
         await deleteMaterial(Number(deleteButton.dataset.deleteIndex));
         return;
@@ -912,6 +1061,38 @@
 
       const button = event.target.closest(".image-button");
       if (button) maximizeFromList(Number(button.dataset.index));
+    });
+
+    gallery.addEventListener("dragstart", (event) => {
+      const card = event.target.closest(".viewer-card[draggable=\"true\"]");
+      if (!card || !canUpload()) return;
+      draggedMaterialId = card.dataset.materialId;
+      card.classList.add("is-dragging");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", draggedMaterialId);
+    });
+
+    gallery.addEventListener("dragover", (event) => {
+      const card = event.target.closest(".viewer-card[draggable=\"true\"]");
+      if (!card || !draggedMaterialId) return;
+      event.preventDefault();
+      card.classList.add("is-drop-target");
+    });
+
+    gallery.addEventListener("dragleave", (event) => {
+      event.target.closest(".viewer-card")?.classList.remove("is-drop-target");
+    });
+
+    gallery.addEventListener("drop", (event) => {
+      const card = event.target.closest(".viewer-card[draggable=\"true\"]");
+      if (!card || !draggedMaterialId) return;
+      event.preventDefault();
+      moveDraggedItem(card.dataset.materialId);
+    });
+
+    gallery.addEventListener("dragend", () => {
+      draggedMaterialId = "";
+      gallery.querySelectorAll(".is-dragging, .is-drop-target").forEach((card) => card.classList.remove("is-dragging", "is-drop-target"));
     });
 
     operationStatus.addEventListener("click", (event) => {
@@ -924,6 +1105,8 @@
 
     sizeRange.addEventListener("input", (event) => applyCardSize(event.target.value));
     searchInput.addEventListener("input", renderGallery);
+    sortSelect.addEventListener("change", renderGallery);
+    saveOrderButton.addEventListener("click", saveCurrentOrder);
     applyCardSize(sizeRange.value);
     updateAuthUi();
 
@@ -932,11 +1115,15 @@
       updateAuthUi();
     });
 
-    onSnapshot(query(collection(db, "materials"), orderBy("createdAt", "desc")), (snapshot) => {
+    onSnapshot(query(collection(db, "materials")), (snapshot) => {
       materials.splice(0, materials.length, ...snapshot.docs.map((documentSnapshot) => ({
         id: documentSnapshot.id,
         ...documentSnapshot.data()
       })));
+      if (!hasInitializedSort) {
+        sortSelect.value = materials.some((item) => Number.isFinite(item.sortOrder)) ? "custom" : "createdAt";
+        hasInitializedSort = true;
+      }
       renderGallery();
     }, (error) => {
       console.error("Firestore materials subscription failed", error);

@@ -110,7 +110,13 @@
       inset: 0;
       z-index: 20;
       display: none;
+      width: 100vw;
+      max-width: none;
+      height: 100vh;
+      max-height: none;
+      margin: 0;
       padding: clamp(12px, 3vw, 32px);
+      border: 0;
       background: rgba(19, 23, 34, 0.78);
     }
 
@@ -121,8 +127,8 @@
 
     .modal-content {
       position: relative;
-      width: min(100%, calc(100vw - clamp(24px, 6vw, 64px)));
-      height: min(100%, calc(100vh - clamp(24px, 6vw, 64px)));
+      width: 100%;
+      height: 100%;
       display: grid;
       grid-template-rows: minmax(0, 1fr);
       overflow: hidden;
@@ -265,6 +271,10 @@
         </svg>`)}`;
     }
 
+    function imageSrc(item, index) {
+      return item[3] || svgData(item, index);
+    }
+
     const gallery = document.querySelector("#gallery");
     const modal = document.querySelector("#modal");
     const modalImage = document.querySelector("#modalImage");
@@ -274,7 +284,7 @@
     gallery.innerHTML = materials.map((item, index) => `
       <article class="viewer-card">
         <button class="image-button" type="button" data-index="${index}" aria-label="${item[0]}を拡大表示">
-          <div class="image-wrap"><img src="${item[3] || svgData(item, index)}" alt="${item[0]}のサンプル資料"><span class="badge">${item[2]}</span></div>
+          <div class="image-wrap"><img src="${imageSrc(item, index)}" alt="${item[0]}のサンプル資料" data-fallback-src="${svgData(item, index)}"><span class="badge">${item[2]}</span></div>
         </button>
       </article>
     `).join("");
@@ -283,10 +293,21 @@
       currentIndex = (index + materials.length) % materials.length;
       const item = materials[currentIndex];
       modalTitle.textContent = item[0];
-      modalImage.src = item[3] || svgData(item, currentIndex);
+      modalImage.onerror = () => {
+        modalImage.onerror = null;
+        modalImage.src = svgData(item, currentIndex);
+      };
+      modalImage.src = imageSrc(item, currentIndex);
       modalImage.alt = `${item[0]}の拡大資料`;
       modal.showModal();
     }
+
+    gallery.addEventListener("error", (event) => {
+      const image = event.target.closest("img[data-fallback-src]");
+      if (!image || image.dataset.fallbackApplied) return;
+      image.dataset.fallbackApplied = "true";
+      image.src = image.dataset.fallbackSrc;
+    }, true);
 
     gallery.addEventListener("click", (event) => {
       const button = event.target.closest(".image-button");

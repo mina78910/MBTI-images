@@ -36,84 +36,16 @@
     .app-shell {
       width: min(1440px, 100%);
       margin: 0 auto;
-      padding: clamp(16px, 3vw, 36px);
+      padding: clamp(12px, 3vw, 28px);
     }
 
-    .hero {
-      display: grid;
-      grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
-      gap: 24px;
-      align-items: stretch;
-      margin-bottom: 24px;
-    }
-
-    .hero-card, .controls, .viewer-card, .modal-content {
+    .controls, .viewer-card, .modal-content {
       border: 1px solid rgba(255, 255, 255, 0.72);
       background: var(--panel);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
       backdrop-filter: blur(14px);
     }
-
-    .hero-card { padding: clamp(24px, 5vw, 52px); }
-
-    .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      margin: 0 0 14px;
-      padding: 8px 12px;
-      border-radius: 999px;
-      color: #4b3fc8;
-      background: rgba(111, 93, 231, 0.12);
-      font-size: 0.9rem;
-      font-weight: 700;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: clamp(2.2rem, 6vw, 5.8rem);
-      line-height: 0.98;
-      letter-spacing: -0.065em;
-    }
-
-    .lead {
-      max-width: 760px;
-      margin: 18px 0 0;
-      color: var(--muted);
-      font-size: clamp(1rem, 2vw, 1.24rem);
-      line-height: 1.8;
-    }
-
-    .quick-guide {
-      display: grid;
-      gap: 14px;
-      padding: 22px;
-    }
-
-    .guide-item {
-      display: grid;
-      grid-template-columns: 44px 1fr;
-      gap: 12px;
-      align-items: center;
-      padding: 14px;
-      border-radius: 18px;
-      background: rgba(255, 255, 255, 0.68);
-    }
-
-    .guide-icon {
-      display: grid;
-      width: 44px;
-      height: 44px;
-      place-items: center;
-      border-radius: 14px;
-      color: white;
-      background: linear-gradient(135deg, var(--accent), var(--accent-2));
-      font-size: 1.3rem;
-    }
-
-    .guide-item strong { display: block; }
-    .guide-item span { color: var(--muted); font-size: 0.9rem; }
 
     .controls {
       position: sticky;
@@ -291,11 +223,6 @@
     .zoom-stage.is-zoomed img { width: var(--zoom-width, 1600px); }
     .hint { color: var(--muted); font-size: 0.92rem; }
 
-    @media (max-width: 860px) {
-      .hero { grid-template-columns: 1fr; }
-      .controls { position: static; }
-    }
-
     @media (max-width: 560px) {
       .app-shell { padding: 12px; }
       .controls, .modal-header, .modal-footer { align-items: stretch; flex-direction: column; }
@@ -308,19 +235,6 @@
 </head>
 <body>
   <main class="app-shell">
-    <section class="hero" aria-labelledby="page-title">
-      <div class="hero-card">
-        <p class="eyebrow">📚 Offline tablet style viewer</p>
-        <h1 id="page-title">MBTI資料を<br>みんなで見やすく</h1>
-        <p class="lead">ファミレスの注文タブレットのように、テーブルを囲んで直感的に資料を選べるサンプルアプリです。画像はすべてこのHTML内のフリー風SVGサンプルなので、ネットがない場所でもそのまま共有できます。</p>
-      </div>
-      <aside class="quick-guide" aria-label="使い方">
-        <div class="guide-item"><span class="guide-icon">🔎</span><span><strong>タップで拡大</strong><span>資料画像を大きく表示し、横幅を広げて細部を確認できます。</span></span></div>
-        <div class="guide-item"><span class="guide-icon">🧭</span><span><strong>一覧サイズ変更</strong><span>小さく一気見、大きくスクロールの両方に対応します。</span></span></div>
-        <div class="guide-item"><span class="guide-icon">📱</span><span><strong>レスポンシブ</strong><span>PC、タブレット、スマホで見やすいレイアウトに切り替わります。</span></span></div>
-      </aside>
-    </section>
-
     <section class="controls" aria-label="表示設定">
       <div class="segmented" role="group" aria-label="一覧表示サイズ">
         <button type="button" data-size="small">小さく一覧</button>

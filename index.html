@@ -219,6 +219,7 @@
     ];
 
     const materials = [
+      ["サンプル", "アップロードされたサンプル画像", "Sample", "sample.jpg"],
       ["全体像", "16タイプを4つの気質グループで眺める導入資料", "NT / NF / SJ / SP"],
       ["内向・外向", "エネルギーの向きの違いを会話の場面で比較", "E / I"],
       ["感覚・直観", "情報の受け取り方を地図とアイデアで表現", "S / N"],
@@ -273,7 +274,7 @@
     gallery.innerHTML = materials.map((item, index) => `
       <article class="viewer-card">
         <button class="image-button" type="button" data-index="${index}" aria-label="${item[0]}を拡大表示">
-          <div class="image-wrap"><img src="${svgData(item, index)}" alt="${item[0]}のサンプル資料"><span class="badge">${item[2]}</span></div>
+          <div class="image-wrap"><img src="${item[3] || svgData(item, index)}" alt="${item[0]}のサンプル資料"><span class="badge">${item[2]}</span></div>
         </button>
       </article>
     `).join("");
@@ -282,7 +283,7 @@
       currentIndex = (index + materials.length) % materials.length;
       const item = materials[currentIndex];
       modalTitle.textContent = item[0];
-      modalImage.src = svgData(item, currentIndex);
+      modalImage.src = item[3] || svgData(item, currentIndex);
       modalImage.alt = `${item[0]}の拡大資料`;
       modal.showModal();
     }

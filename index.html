@@ -564,6 +564,8 @@
       flex: 1;
     }
 
+    .tag-form { position: relative; }
+
     .tag-submit {
       border: 0;
       border-radius: 999px;
@@ -572,6 +574,43 @@
       background: var(--accent);
       font-weight: 900;
       cursor: pointer;
+    }
+
+    .tag-suggestions {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(100% + 8px);
+      z-index: 25;
+      display: grid;
+      gap: 6px;
+      max-height: 220px;
+      overflow: auto;
+      padding: 8px;
+      border: 1px solid rgba(104, 115, 134, 0.22);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.97);
+      box-shadow: 0 14px 34px rgba(42, 39, 58, 0.16);
+    }
+
+    .tag-suggestions[hidden] { display: none; }
+
+    .tag-suggestion-button {
+      border: 0;
+      border-radius: 999px;
+      padding: 8px 11px;
+      color: var(--ink);
+      background: rgba(39, 49, 63, 0.08);
+      font-size: 0.84rem;
+      font-weight: 900;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .tag-suggestion-button:hover, .tag-suggestion-button:focus-visible {
+      color: white;
+      background: var(--accent);
+      outline: none;
     }
 
     .card-admin-actions {
@@ -638,6 +677,8 @@
       .upload-control { justify-content: center; width: 100%; }
       .tag-picker { width: 100%; }
       .tag-picker-panel { left: 0; right: auto; width: calc(100vw - 24px); }
+      .advanced-on-mobile { display: none; }
+      .toolbar.is-expanded .advanced-on-mobile { display: grid; }
     }
   </style>
 </head>
@@ -664,11 +705,11 @@
           </div>
           <input id="searchInput" type="search" placeholder="例: NT、内向、チーム" autocomplete="off" aria-label="タグで資料を検索">
         </div>
-        <div class="search-control">
+        <div class="search-control advanced-on-mobile">
           <label for="excludeSearchInput">検索除外タグ</label>
           <input id="excludeSearchInput" type="search" placeholder="例: 古い、重複、不要" autocomplete="off" aria-label="除外したいタグで資料を絞り込み">
         </div>
-        <div class="search-control tag-picker">
+        <div class="search-control tag-picker advanced-on-mobile">
           <label for="tagPickerButton">タグ一覧</label>
           <button id="tagPickerButton" class="tag-picker-button" type="button" aria-expanded="false" aria-controls="tagPickerPanel">全タグから選ぶ</button>
           <div id="tagPickerPanel" class="tag-picker-panel" role="dialog" aria-modal="false" aria-labelledby="tagPickerTitle" hidden>
@@ -783,6 +824,7 @@
     function setToolbarExpanded(isExpanded) {
       toolbarContent.hidden = !isExpanded;
       toolbarToggle.setAttribute("aria-expanded", String(isExpanded));
+      toolbarToggle.closest(".toolbar")?.classList.toggle("is-expanded", isExpanded);
       toolbarToggle.textContent = isExpanded ? "メニューを閉じる" : "さらにメニューを開く";
     }
 
@@ -829,6 +871,67 @@
       tagPickerOptions.innerHTML = tags.length
         ? tags.map((tag) => `<button class="tag-option-button" type="button" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`).join("")
         : `<p class="tag-picker-empty">${allTags.length ? "条件に一致するタグがありません。" : "まだ登録済みタグがありません。"}</p>`;
+    }
+
+
+    function matchingExistingTags(queryText, item) {
+      const query = queryText.trim().toLowerCase();
+      const itemTagKeys = new Set(itemTags(item).map((tag) => tag.toLowerCase()));
+      if (!query) return [];
+      return allUniqueTags()
+        .filter((tag) => tag.toLowerCase().includes(query) && !itemTagKeys.has(tag.toLowerCase()))
+        .slice(0, 8);
+    }
+
+    function canonicalTagName(value) {
+      const normalizedValue = value.trim();
+      const existingTag = allUniqueTags().find((tag) => tag.toLowerCase() === normalizedValue.toLowerCase());
+      return existingTag || normalizedValue;
+    }
+
+    function renderTagSuggestions(form) {
+      if (!form) return;
+      const input = form.elements.tag;
+      const suggestions = form.querySelector(".tag-suggestions");
+      const item = materials[Number(form.dataset.index)];
+      if (!input || !suggestions || !item) return;
+      const tags = matchingExistingTags(input.value, item);
+      suggestions.hidden = !tags.length;
+      suggestions.innerHTML = tags.map((tag) => (
+        `<button class="tag-suggestion-button" type="button" role="option" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`
+      )).join("");
+    }
+
+    function hideTagSuggestions(form) {
+      const suggestions = form?.querySelector(".tag-suggestions");
+      if (!suggestions) return;
+      suggestions.hidden = true;
+      suggestions.innerHTML = "";
+    }
+
+    async function addTagToMaterial(index, rawValue, input) {
+      if (!canUpload()) {
+        setMessage("タグ追加には管理者Googleアカウントでのログインが必要です。");
+        return;
+      }
+      const value = canonicalTagName(rawValue);
+      if (!value) return;
+      const item = materials[index];
+      if (!item) return;
+      const tags = itemTags(item);
+      if (tags.some((tag) => tag.toLowerCase() === value.toLowerCase())) {
+        if (input) input.value = "";
+        hideTagSuggestions(input?.closest(".tag-form"));
+        return;
+      }
+      try {
+        await updateDoc(doc(db, "materials", item.id), { tags: [...tags, value] });
+        if (input) input.value = "";
+        hideTagSuggestions(input?.closest(".tag-form"));
+      } catch (error) {
+        console.error("Tag update failed", error);
+        showFirebaseError("タグ更新", error);
+      }
     }
 
     function syncSearchQueryToUrl() {
@@ -998,6 +1101,7 @@
               <form class="tag-form" data-index="${materialIndex}" aria-label="${title}にタグを追加">
                 <input class="tag-input" name="tag" type="text" placeholder="タグを追加" autocomplete="off" aria-label="追加するタグ" ${canEditTags ? "" : "disabled"}>
                 <button class="tag-submit" type="submit" ${canEditTags ? "" : "disabled"}>追加</button>
+                <div class="tag-suggestions" role="listbox" aria-label="既存タグ候補" hidden></div>
               </form>` : ""}
               ${adminControls}
             </div>
@@ -1295,26 +1399,13 @@
       const form = event.target.closest(".tag-form");
       if (!form) return;
       event.preventDefault();
-      if (!canUpload()) {
-        setMessage("タグ追加には管理者Googleアカウントでのログインが必要です。");
-        return;
-      }
-      const input = form.elements.tag;
-      const value = input.value.trim();
-      if (!value) return;
-      const item = materials[Number(form.dataset.index)];
-      const tags = itemTags(item);
-      if (tags.some((tag) => tag.toLowerCase() === value.toLowerCase())) {
-        input.value = "";
-        return;
-      }
-      try {
-        await updateDoc(doc(db, "materials", item.id), { tags: [...tags, value] });
-        input.value = "";
-      } catch (error) {
-        console.error("Tag update failed", error);
-        showFirebaseError("タグ更新", error);
-      }
+      await addTagToMaterial(Number(form.dataset.index), form.elements.tag.value, form.elements.tag);
+    });
+
+    gallery.addEventListener("input", (event) => {
+      const input = event.target.closest(".tag-input");
+      if (!input) return;
+      renderTagSuggestions(input.closest(".tag-form"));
     });
 
     gallery.addEventListener("change", async (event) => {
@@ -1326,6 +1417,13 @@
     });
 
     gallery.addEventListener("click", async (event) => {
+      const suggestionButton = event.target.closest(".tag-suggestion-button");
+      if (suggestionButton) {
+        const form = suggestionButton.closest(".tag-form");
+        await addTagToMaterial(Number(form.dataset.index), suggestionButton.dataset.tag, form.elements.tag);
+        return;
+      }
+
       const deleteButton = event.target.closest(".delete-button");
       const moveButton = event.target.closest(".move-button");
       if (moveButton) {
@@ -1408,6 +1506,7 @@
     document.addEventListener("click", (event) => {
       if (!tagInfoPanel.hidden && !event.target.closest(".tag-info-wrapper")) setTagInfoExpanded(false);
       if (!tagPickerPanel.hidden && !event.target.closest(".tag-picker")) setTagPickerExpanded(false);
+      if (!event.target.closest(".tag-form")) gallery.querySelectorAll(".tag-form").forEach(hideTagSuggestions);
     });
 
     document.addEventListener("keydown", (event) => {

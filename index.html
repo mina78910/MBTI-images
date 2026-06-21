@@ -209,6 +209,52 @@
       font-weight: 900;
     }
 
+    .search-label-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .tag-info-wrapper {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .tag-info-button {
+      display: inline-grid;
+      place-items: center;
+      width: 22px;
+      height: 22px;
+      border: 0;
+      border-radius: 50%;
+      color: white;
+      background: var(--accent);
+      font-size: 0.82rem;
+      font-weight: 950;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .tag-info-panel {
+      position: absolute;
+      left: 0;
+      top: calc(100% + 8px);
+      z-index: 20;
+      width: min(78vw, 320px);
+      padding: 12px 14px;
+      border: 1px solid rgba(104, 115, 134, 0.22);
+      border-radius: 16px;
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 14px 34px rgba(42, 39, 58, 0.16);
+      font-size: 0.88rem;
+      font-weight: 800;
+      line-height: 1.55;
+    }
+
+    .tag-info-panel[hidden] { display: none; }
+
     .search-control input, .sort-select { width: 100%; }
 
     .sort-tools {
@@ -488,10 +534,16 @@
             <input id="sizeRange" type="range" min="160" max="1180" step="20" value="240" aria-label="一覧画像の大きさ">
             <span>大</span>
           </label>
-          <label class="search-control" for="searchInput">
-            <span>タグ検索</span>
+          <div class="search-control">
+            <div class="search-label-row">
+              <label for="searchInput">タグ検索</label>
+              <span class="tag-info-wrapper">
+                <button id="tagInfoButton" class="tag-info-button" type="button" aria-expanded="false" aria-controls="tagInfoPanel" aria-label="タグ検索の仕様を表示">i</button>
+                <span id="tagInfoPanel" class="tag-info-panel" role="status" hidden>タグ検索は大文字・小文字を区別しません。検索中のタグはURLにも保存されるため、そのURLを共有すると同じタグ検索状態で開けます。</span>
+              </span>
+            </div>
             <input id="searchInput" type="search" placeholder="例: NT、内向、チーム" autocomplete="off" aria-label="タグで資料を検索">
-          </label>
+          </div>
           <div class="sort-tools">
             <label class="sort-control" for="sortSelect">
               <span>表示順</span>
@@ -568,6 +620,10 @@
     const operationStatus = document.querySelector("#operationStatus");
     const toolbarToggle = document.querySelector("#toolbarToggle");
     const toolbarContent = document.querySelector("#toolbarContent");
+    const tagInfoButton = document.querySelector("#tagInfoButton");
+    const tagInfoPanel = document.querySelector("#tagInfoPanel");
+    const searchParams = new URLSearchParams(window.location.search);
+    const initialTagQuery = searchParams.get("tag") || searchParams.get("tags") || "";
     const minCardSize = Number(sizeRange.min);
     const maxCardSize = Number(sizeRange.max);
 
@@ -581,6 +637,19 @@
       toolbarToggle.textContent = isExpanded ? "メニューを閉じる" : "メニューを開く";
     }
 
+    function setTagInfoExpanded(isExpanded) {
+      tagInfoPanel.hidden = !isExpanded;
+      tagInfoButton.setAttribute("aria-expanded", String(isExpanded));
+    }
+
+    function syncSearchQueryToUrl() {
+      const queryText = searchInput.value.trim();
+      const nextUrl = new URL(window.location.href);
+      if (queryText) nextUrl.searchParams.set("tag", queryText);
+      else nextUrl.searchParams.delete("tag");
+      nextUrl.searchParams.delete("tags");
+      window.history.replaceState({}, "", nextUrl);
+    }
 
     function setMessage(message) {
       uploadNote.textContent = message;
@@ -1103,10 +1172,27 @@
       setToolbarExpanded(toolbarContent.hidden);
     });
 
+    tagInfoButton.addEventListener("click", () => {
+      setTagInfoExpanded(tagInfoPanel.hidden);
+    });
+
+    document.addEventListener("click", (event) => {
+      if (tagInfoPanel.hidden || event.target.closest(".tag-info-wrapper")) return;
+      setTagInfoExpanded(false);
+    });
+
     sizeRange.addEventListener("input", (event) => applyCardSize(event.target.value));
-    searchInput.addEventListener("input", renderGallery);
+    searchInput.addEventListener("input", () => {
+      syncSearchQueryToUrl();
+      renderGallery();
+    });
     sortSelect.addEventListener("change", renderGallery);
     saveOrderButton.addEventListener("click", saveCurrentOrder);
+    if (initialTagQuery) {
+      searchInput.value = initialTagQuery;
+      setToolbarExpanded(true);
+    }
+    syncSearchQueryToUrl();
     applyCardSize(sizeRange.value);
     updateAuthUi();
 

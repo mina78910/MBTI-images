@@ -225,7 +225,7 @@
     ];
 
     const materials = [
-      ["サンプル", "アップロードされたサンプル画像", "Sample", "sample.jpg"],
+      ["サンプル", "アップロードされたサンプル画像", "Sample", "sample.jpg", "https://raw.githubusercontent.com/mina78910/MBTI-images/main/sample.jpg"],
       ["全体像", "16タイプを4つの気質グループで眺める導入資料", "NT / NF / SJ / SP"],
       ["内向・外向", "エネルギーの向きの違いを会話の場面で比較", "E / I"],
       ["感覚・直観", "情報の受け取り方を地図とアイデアで表現", "S / N"],
@@ -284,7 +284,7 @@
     gallery.innerHTML = materials.map((item, index) => `
       <article class="viewer-card">
         <button class="image-button" type="button" data-index="${index}" aria-label="${item[0]}を拡大表示">
-          <div class="image-wrap"><img src="${imageSrc(item, index)}" alt="${item[0]}のサンプル資料" data-fallback-src="${svgData(item, index)}"><span class="badge">${item[2]}</span></div>
+          <div class="image-wrap"><img src="${imageSrc(item, index)}" alt="${item[0]}のサンプル資料" data-fallback-src="${item[4] || svgData(item, index)}" data-final-fallback-src="${svgData(item, index)}"><span class="badge">${item[2]}</span></div>
         </button>
       </article>
     `).join("");
@@ -294,6 +294,10 @@
       const item = materials[currentIndex];
       modalTitle.textContent = item[0];
       modalImage.onerror = () => {
+        if (item[4] && modalImage.src !== item[4]) {
+          modalImage.src = item[4];
+          return;
+        }
         modalImage.onerror = null;
         modalImage.src = svgData(item, currentIndex);
       };
@@ -304,9 +308,16 @@
 
     gallery.addEventListener("error", (event) => {
       const image = event.target.closest("img[data-fallback-src]");
-      if (!image || image.dataset.fallbackApplied) return;
-      image.dataset.fallbackApplied = "true";
-      image.src = image.dataset.fallbackSrc;
+      if (!image) return;
+      if (!image.dataset.fallbackApplied) {
+        image.dataset.fallbackApplied = "true";
+        image.src = image.dataset.fallbackSrc;
+        return;
+      }
+      if (!image.dataset.finalFallbackApplied) {
+        image.dataset.finalFallbackApplied = "true";
+        image.src = image.dataset.finalFallbackSrc;
+      }
     }, true);
 
     gallery.addEventListener("click", (event) => {

@@ -9,7 +9,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function isAdmin() {
-      let ADMIN_UID = 'REPLACE_WITH_ADMIN_UID';
+      let ADMIN_UID = 'AutvrLYLvOfLUHhSbnVSaQMe9AT2';
       return request.auth != null && request.auth.uid == ADMIN_UID;
     }
 
@@ -28,7 +28,7 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     function isAdmin() {
-      let ADMIN_UID = 'REPLACE_WITH_ADMIN_UID';
+      let ADMIN_UID = 'AutvrLYLvOfLUHhSbnVSaQMe9AT2';
       return request.auth != null && request.auth.uid == ADMIN_UID;
     }
 

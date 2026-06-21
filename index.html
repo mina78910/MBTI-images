@@ -231,7 +231,7 @@
     ];
 
     function svgData([title, description, tag], index) {
-      const [a, b] = palette[index];
+      const [a, b] = palette[index % palette.length];
       const safeTitle = title.replace(/&/g, "&amp;");
       const safeDesc = description.replace(/&/g, "&amp;");
       return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`

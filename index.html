@@ -1,1 +1,368 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MBTI オフライン資料ギャラリー</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f3eb;
+      --panel: rgba(255, 255, 255, 0.88);
+      --ink: #27313f;
+      --muted: #687386;
+      --accent: #6f5de7;
+      --accent-2: #19a7a8;
+      --ring: rgba(111, 93, 231, 0.28);
+      --shadow: 0 18px 45px rgba(42, 39, 58, 0.16);
+      --radius: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP", sans-serif;
+    }
 
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(255, 201, 121, 0.38), transparent 34rem),
+        radial-gradient(circle at 90% 8%, rgba(119, 215, 216, 0.34), transparent 28rem),
+        linear-gradient(135deg, #fbf7ef 0%, var(--bg) 55%, #eef7f7 100%);
+    }
+
+    button, input { font: inherit; }
+
+    .app-shell {
+      width: min(1440px, 100%);
+      margin: 0 auto;
+      padding: clamp(12px, 3vw, 28px);
+    }
+
+    .controls, .viewer-card, .modal-content {
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      background: var(--panel);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .controls {
+      position: sticky;
+      top: 12px;
+      z-index: 5;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px;
+      margin-bottom: 24px;
+    }
+
+    .segmented {
+      display: inline-grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      padding: 6px;
+      border-radius: 18px;
+      background: #ede8fb;
+    }
+
+    .segmented button, .chip, .modal-close, .nav-button {
+      border: 0;
+      cursor: pointer;
+      transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .segmented button {
+      padding: 10px 14px;
+      border-radius: 13px;
+      color: #514a73;
+      background: transparent;
+      font-weight: 800;
+    }
+
+    .segmented button[aria-pressed="true"] {
+      color: white;
+      background: var(--accent);
+      box-shadow: 0 10px 18px rgba(111, 93, 231, 0.28);
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.78);
+      font-weight: 800;
+    }
+
+    .chip input { width: 18px; height: 18px; accent-color: var(--accent); }
+
+    .gallery {
+      display: grid;
+      gap: var(--gap, 16px);
+      grid-template-columns: repeat(auto-fill, minmax(var(--card-min, 170px), 1fr));
+      align-items: start;
+    }
+
+    .gallery[data-size="large"] { --card-min: min(520px, 100%); --gap: 22px; }
+    .gallery[data-size="medium"] { --card-min: 280px; --gap: 18px; }
+    .gallery[data-size="small"] { --card-min: 150px; --gap: 12px; }
+
+    .viewer-card {
+      overflow: hidden;
+      cursor: zoom-in;
+      transform: translateY(0);
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .viewer-card:focus-within, .viewer-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 22px 54px rgba(42, 39, 58, 0.2);
+    }
+
+    .image-button {
+      display: block;
+      width: 100%;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      cursor: zoom-in;
+      text-align: left;
+    }
+
+    .image-wrap {
+      position: relative;
+      overflow: hidden;
+      aspect-ratio: 4 / 3;
+      background: #e8edf4;
+    }
+
+    .gallery[data-size="large"] .image-wrap { aspect-ratio: 16 / 10; }
+    .image-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    .badge {
+      position: absolute;
+      left: 12px;
+      top: 12px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      color: white;
+      background: rgba(39, 49, 63, 0.72);
+      font-size: 0.78rem;
+      font-weight: 900;
+    }
+
+    .card-body { padding: 16px; }
+    .card-body h2 { margin: 0 0 8px; font-size: clamp(1.05rem, 2vw, 1.35rem); }
+    .card-body p { margin: 0; color: var(--muted); line-height: 1.65; }
+    .gallery[data-size="small"] .card-body p { display: none; }
+    .gallery[data-size="small"] .card-body { padding: 10px; }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      padding: clamp(12px, 3vw, 32px);
+      background: rgba(19, 23, 34, 0.78);
+    }
+
+    .modal[open] {
+      display: grid;
+      place-items: center;
+    }
+
+    .modal-content {
+      width: min(1180px, 100%);
+      max-height: min(920px, 92vh);
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .modal-header, .modal-footer {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+    }
+
+    .modal-title { margin: 0; font-size: clamp(1.1rem, 3vw, 1.6rem); }
+    .modal-close, .nav-button {
+      min-width: 44px;
+      min-height: 44px;
+      border-radius: 999px;
+      color: var(--ink);
+      background: #f0edf9;
+      font-weight: 900;
+    }
+
+    .modal-close:hover, .nav-button:hover, .chip:hover, .segmented button:hover { transform: translateY(-1px); }
+
+    .zoom-stage {
+      overflow: auto;
+      background: #101622;
+      touch-action: pan-x pan-y;
+    }
+
+    .zoom-stage img {
+      display: block;
+      width: min(100%, var(--zoom-width, 100%));
+      max-width: none;
+      margin: auto;
+    }
+
+    .zoom-stage.is-zoomed img { width: var(--zoom-width, 1600px); }
+    .hint { color: var(--muted); font-size: 0.92rem; }
+
+    @media (max-width: 560px) {
+      .app-shell { padding: 12px; }
+      .controls, .modal-header, .modal-footer { align-items: stretch; flex-direction: column; }
+      .segmented { width: 100%; }
+      .chip { justify-content: center; width: 100%; }
+      .gallery { grid-template-columns: repeat(auto-fill, minmax(var(--card-min, 145px), 1fr)); }
+      .gallery[data-size="medium"] { --card-min: 210px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <section class="controls" aria-label="表示設定">
+      <div class="segmented" role="group" aria-label="一覧表示サイズ">
+        <button type="button" data-size="small">小さく一覧</button>
+        <button type="button" data-size="medium" aria-pressed="true">標準</button>
+        <button type="button" data-size="large">大きく</button>
+      </div>
+      <label class="chip"><input id="zoomToggle" type="checkbox" checked> 拡大時に高倍率で開く</label>
+    </section>
+
+    <section id="gallery" class="gallery" data-size="medium" aria-label="MBTI資料サンプル一覧"></section>
+  </main>
+
+  <dialog id="modal" class="modal" aria-label="画像拡大表示">
+    <div class="modal-content">
+      <header class="modal-header">
+        <h2 id="modalTitle" class="modal-title"></h2>
+        <button class="modal-close" type="button" aria-label="閉じる">×</button>
+      </header>
+      <div id="zoomStage" class="zoom-stage"><img id="modalImage" alt=""></div>
+      <footer class="modal-footer">
+        <button id="prevButton" class="nav-button" type="button">← 前へ</button>
+        <span class="hint">画像部分はスクロールできます。もう一度画像をタップすると倍率を切り替えます。</span>
+        <button id="nextButton" class="nav-button" type="button">次へ →</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <script>
+    const palette = [
+      ["#6f5de7", "#19a7a8"], ["#f06f6f", "#ffd166"], ["#2f80ed", "#56ccf2"], ["#27ae60", "#a8e063"],
+      ["#9b51e0", "#f2994a"], ["#00a8a8", "#b2f7ef"], ["#eb5757", "#f2c94c"], ["#4f4f4f", "#bdbdbd"]
+    ];
+
+    const materials = [
+      ["全体像", "16タイプを4つの気質グループで眺める導入資料", "NT / NF / SJ / SP"],
+      ["内向・外向", "エネルギーの向きの違いを会話の場面で比較", "E / I"],
+      ["感覚・直観", "情報の受け取り方を地図とアイデアで表現", "S / N"],
+      ["思考・感情", "判断軸の違いをチーム相談の例で確認", "T / F"],
+      ["判断・知覚", "予定の立て方と柔軟性をワーク風に整理", "J / P"],
+      ["相性メモ", "タイプ差を尊重しながら話すためのヒント", "Tips"],
+      ["チーム配置", "役割分担を考えるためのテーブル用資料", "Team"],
+      ["振り返り", "自己理解を深める問いをまとめた共有カード", "Review"]
+    ];
+
+    function svgData([title, description, tag], index) {
+      const [a, b] = palette[index];
+      const safeTitle = title.replace(/&/g, "&amp;");
+      const safeDesc = description.replace(/&/g, "&amp;");
+      return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-label="${safeTitle}">
+          <defs>
+            <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>
+            <filter id="s" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="18" stdDeviation="20" flood-opacity="0.2"/></filter>
+          </defs>
+          <rect width="1200" height="900" fill="#fbf8f0"/>
+          <circle cx="1030" cy="120" r="220" fill="${b}" opacity=".22"/>
+          <circle cx="120" cy="820" r="260" fill="${a}" opacity=".16"/>
+          <rect x="78" y="78" width="1044" height="744" rx="56" fill="white" filter="url(#s)"/>
+          <rect x="118" y="118" width="964" height="180" rx="38" fill="url(#g)"/>
+          <text x="166" y="228" fill="white" font-family="Arial, sans-serif" font-size="76" font-weight="800">MBTI ${safeTitle}</text>
+          <text x="166" y="276" fill="white" opacity=".86" font-family="Arial, sans-serif" font-size="32">${tag} sample material</text>
+          <g transform="translate(150 360)">
+            <rect width="250" height="250" rx="42" fill="${a}" opacity=".14"/>
+            <circle cx="125" cy="92" r="52" fill="${a}"/>
+            <path d="M60 210c14-56 50-86 65-86s51 30 65 86" fill="${a}" opacity=".88"/>
+          </g>
+          <g transform="translate(455 368)" fill="#263040" font-family="Arial, sans-serif">
+            <text font-size="44" font-weight="800">見る・話す・比べる</text>
+            <text y="76" font-size="32" fill="#677386">${safeDesc}</text>
+            <rect y="122" width="560" height="22" rx="11" fill="${a}" opacity=".22"/>
+            <rect y="174" width="470" height="22" rx="11" fill="${b}" opacity=".36"/>
+            <rect y="226" width="520" height="22" rx="11" fill="#27313f" opacity=".12"/>
+          </g>
+          <g transform="translate(150 682)">
+            ${[0,1,2,3].map((n) => `<rect x="${n * 235}" width="190" height="72" rx="24" fill="${n % 2 ? b : a}" opacity=".88"/><text x="${n * 235 + 95}" y="47" text-anchor="middle" fill="white" font-family="Arial" font-size="25" font-weight="800">TYPE ${index + 1}-${n + 1}</text>`).join("")}
+          </g>
+        </svg>`)}`;
+    }
+
+    const gallery = document.querySelector("#gallery");
+    const modal = document.querySelector("#modal");
+    const modalImage = document.querySelector("#modalImage");
+    const modalTitle = document.querySelector("#modalTitle");
+    const zoomStage = document.querySelector("#zoomStage");
+    const zoomToggle = document.querySelector("#zoomToggle");
+    let currentIndex = 0;
+
+    gallery.innerHTML = materials.map((item, index) => `
+      <article class="viewer-card">
+        <button class="image-button" type="button" data-index="${index}" aria-label="${item[0]}を拡大表示">
+          <div class="image-wrap"><img src="${svgData(item, index)}" alt="${item[0]}のサンプル資料"><span class="badge">${item[2]}</span></div>
+          <div class="card-body"><h2>${item[0]}</h2><p>${item[1]}</p></div>
+        </button>
+      </article>
+    `).join("");
+
+    document.querySelectorAll("[data-size]").forEach((button) => {
+      button.addEventListener("click", () => {
+        gallery.dataset.size = button.dataset.size;
+        document.querySelectorAll("[data-size]").forEach((b) => b.setAttribute("aria-pressed", String(b === button)));
+      });
+    });
+
+    function openModal(index) {
+      currentIndex = (index + materials.length) % materials.length;
+      const item = materials[currentIndex];
+      modalTitle.textContent = item[0];
+      modalImage.src = svgData(item, currentIndex);
+      modalImage.alt = `${item[0]}の拡大資料`;
+      zoomStage.classList.toggle("is-zoomed", zoomToggle.checked);
+      modal.showModal();
+    }
+
+    gallery.addEventListener("click", (event) => {
+      const button = event.target.closest(".image-button");
+      if (button) openModal(Number(button.dataset.index));
+    });
+
+    document.querySelector(".modal-close").addEventListener("click", () => modal.close());
+    document.querySelector("#prevButton").addEventListener("click", () => openModal(currentIndex - 1));
+    document.querySelector("#nextButton").addEventListener("click", () => openModal(currentIndex + 1));
+    zoomStage.addEventListener("click", () => zoomStage.classList.toggle("is-zoomed"));
+    modal.addEventListener("click", (event) => { if (event.target === modal) modal.close(); });
+    window.addEventListener("keydown", (event) => {
+      if (!modal.open) return;
+      if (event.key === "ArrowLeft") openModal(currentIndex - 1);
+      if (event.key === "ArrowRight") openModal(currentIndex + 1);
+    });
+  </script>
+</body>
+</html>

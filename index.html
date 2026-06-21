@@ -33,6 +33,11 @@
 
     button, input { font: inherit; }
 
+    .paste-highlight {
+      outline: 4px solid var(--ring);
+      outline-offset: 4px;
+    }
+
     .toolbar-actions {
       display: flex;
       flex-wrap: wrap;
@@ -195,7 +200,7 @@
           <input id="imageUpload" type="file" accept="image/*" multiple aria-label="追加する画像を選択">
         </label>
       </div>
-      <p class="upload-note">アップロードした画像はこのページを開いている間だけ表示されます。リロードすると消えます。</p>
+      <p id="uploadNote" class="upload-note" aria-live="polite">PCでは画像ファイルの選択に加えて、クリップボードの画像をそのまま Ctrl+V / ⌘V で貼り付けて追加できます。追加した画像はリロードすると消えます。</p>
     </section>
     <section id="gallery" class="gallery" aria-label="MBTI資料サンプル一覧"></section>
   </main>
@@ -270,6 +275,7 @@
     const gallery = document.querySelector("#gallery");
     const sizeRange = document.querySelector("#sizeRange");
     const imageUpload = document.querySelector("#imageUpload");
+    const uploadNote = document.querySelector("#uploadNote");
     const minCardSize = Number(sizeRange.min);
     const maxCardSize = Number(sizeRange.max);
 
@@ -310,20 +316,40 @@
 
     sizeRange.addEventListener("input", (event) => applyCardSize(event.target.value));
 
-    imageUpload.addEventListener("change", (event) => {
-      const files = [...event.target.files].filter((file) => file.type.startsWith("image/"));
-      if (!files.length) return;
+    function addImageFiles(files, sourceLabel = "Upload") {
+      const imageFiles = [...files].filter((file) => file.type.startsWith("image/"));
+      if (!imageFiles.length) return false;
 
       const startIndex = materials.length;
-      files.forEach((file, offset) => {
+      imageFiles.forEach((file, offset) => {
         const src = URL.createObjectURL(file);
-        const title = file.name.replace(/\.[^/.]+$/, "") || `アップロード画像 ${startIndex + offset + 1}`;
-        materials.push([title, "このページ内で一時的に追加された画像", "Upload", src, src]);
+        const defaultTitle = `${sourceLabel}画像 ${startIndex + offset + 1}`;
+        const title = file.name?.replace(/\.[^/.]+$/, "") || defaultTitle;
+        materials.push([title, "このページ内で一時的に追加された画像", sourceLabel, src, src]);
       });
 
       renderGallery();
       maximizeFromList(startIndex);
+      uploadNote.textContent = `${imageFiles.length}枚の画像を追加しました。追加した画像はリロードすると消えます。`;
+      return true;
+    }
+
+    imageUpload.addEventListener("change", (event) => {
+      addImageFiles(event.target.files);
       event.target.value = "";
+    });
+
+    document.addEventListener("paste", (event) => {
+      const clipboardFiles = [...event.clipboardData?.items || []]
+        .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+        .map((item) => item.getAsFile())
+        .filter(Boolean);
+
+      if (!clipboardFiles.length) return;
+      event.preventDefault();
+      addImageFiles(clipboardFiles, "Paste");
+      document.body.classList.add("paste-highlight");
+      window.setTimeout(() => document.body.classList.remove("paste-highlight"), 420);
     });
     gallery.addEventListener("error", (event) => {
       const image = event.target.closest("img[data-fallback-src]");

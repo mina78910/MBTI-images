@@ -869,12 +869,14 @@
       }
     }
 
-    function addSearchTag(tag) {
-      const terms = splitTagQuery(searchInput.value);
-      if (!terms.includes(tag.toLowerCase())) {
-        searchInput.value = [...searchInput.value.trim().split(/[\s,、]+/).filter(Boolean), tag].join(" ");
-      }
+    function addSearchTag(tag, { replaceLast = false } = {}) {
+      const normalizedTag = tag.toLowerCase();
+      const currentTerms = searchInput.value.trim().split(/[\s,、]+/).filter(Boolean);
+      const nextTerms = replaceLast ? currentTerms.slice(0, -1) : currentTerms;
+      if (!nextTerms.some((term) => term.toLowerCase() === normalizedTag)) nextTerms.push(tag);
+      searchInput.value = nextTerms.join(" ");
       syncSearchQueryToUrl();
+      renderSearchSuggestions();
       renderGallery();
     }
 
@@ -1554,7 +1556,7 @@
     searchSuggestions.addEventListener("click", (event) => {
       const button = event.target.closest(".search-suggestion-button");
       if (!button) return;
-      addSearchTag(button.dataset.tag);
+      addSearchTag(button.dataset.tag, { replaceLast: true });
       hideSearchSuggestions();
       searchInput.focus();
     });

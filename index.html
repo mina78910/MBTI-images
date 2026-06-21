@@ -126,7 +126,7 @@
       gap: 8px;
     }
 
-    .toolbar-toggle, .toolbar-close, .toolbar-open-fixed {
+    .toolbar-toggle, .toolbar-close, .toolbar-open-fixed, .orientation-toggle {
       border: 0;
       border-radius: 999px;
       padding: 9px 14px;
@@ -140,6 +140,46 @@
     .toolbar-close {
       color: var(--accent);
       background: rgba(111, 93, 231, 0.12);
+    }
+
+    .orientation-toggle {
+      color: var(--accent);
+      background: rgba(111, 93, 231, 0.12);
+    }
+
+    .orientation-toggle.is-active {
+      color: white;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    }
+
+    body.landscape-view {
+      overflow: hidden;
+      background: #f7f3eb;
+    }
+
+    body.landscape-view .app-shell {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 100dvh;
+      height: 100dvw;
+      max-width: none;
+      overflow-y: auto;
+      padding: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-top));
+      transform: translate(-50%, -50%) rotate(90deg);
+      transform-origin: center;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    @media (orientation: landscape) {
+      body.landscape-view { overflow: auto; }
+      body.landscape-view .app-shell {
+        position: static;
+        width: min(1440px, 100%);
+        height: auto;
+        max-width: 100%;
+        transform: none;
+      }
     }
 
     .toolbar-open-fixed {
@@ -735,6 +775,7 @@
       <div class="toolbar-header">
         <p class="toolbar-title">表示・検索メニュー</p>
         <div class="toolbar-header-actions">
+          <button id="orientationToggle" class="orientation-toggle" type="button" aria-pressed="false">横持ち表示</button>
           <button id="toolbarClose" class="toolbar-close" type="button">閉じる</button>
           <button id="toolbarToggle" class="toolbar-toggle" type="button" aria-expanded="false" aria-controls="toolbarContent">さらにメニューを開く</button>
         </div>
@@ -856,6 +897,7 @@
     const operationStatus = document.querySelector("#operationStatus");
     const toolbar = document.querySelector("#toolbar");
     const toolbarToggle = document.querySelector("#toolbarToggle");
+    const orientationToggle = document.querySelector("#orientationToggle");
     const toolbarClose = document.querySelector("#toolbarClose");
     const toolbarOpenFixed = document.querySelector("#toolbarOpenFixed");
     const toolbarContent = document.querySelector("#toolbarContent");
@@ -873,13 +915,43 @@
     const maxCardSize = Number(sizeRange.max);
     const mobileToolbarQuery = window.matchMedia("(max-width: 560px)");
     let toolbarScrollLockY = 0;
+    let isLandscapeView = false;
+
+
+    function updateOrientationToggle() {
+      orientationToggle.classList.toggle("is-active", isLandscapeView);
+      orientationToggle.setAttribute("aria-pressed", String(isLandscapeView));
+      orientationToggle.textContent = isLandscapeView ? "横持ち解除" : "横持ち表示";
+    }
+
+    async function setLandscapeView(isEnabled) {
+      isLandscapeView = isEnabled;
+      document.body.classList.toggle("landscape-view", isLandscapeView);
+      updateOrientationToggle();
+
+      if (!isLandscapeView) {
+        if (document.fullscreenElement) {
+          try { await document.exitFullscreen(); } catch (error) { console.warn("Fullscreen exit failed", error); }
+        }
+        return;
+      }
+
+      try {
+        if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen();
+        }
+        if (screen.orientation?.lock) await screen.orientation.lock("landscape");
+      } catch (error) {
+        console.info("Device orientation lock is unavailable; using app-side landscape view instead.", error);
+      }
+    }
 
     function canUpload() {
       return Boolean(currentUser && currentUser.uid === ADMIN_UID);
     }
 
     function shouldLockToolbarScroll() {
-      return mobileToolbarQuery.matches && !toolbar.hidden && !toolbarContent.hidden;
+      return !isLandscapeView && mobileToolbarQuery.matches && !toolbar.hidden && !toolbarContent.hidden;
     }
 
     function setToolbarScrollLock(isLocked) {
@@ -1606,6 +1678,10 @@
       if (event.target.closest(".status-close")) clearOperationStatus();
     });
 
+    orientationToggle.addEventListener("click", () => {
+      setLandscapeView(!isLandscapeView);
+    });
+
     toolbarToggle.addEventListener("click", () => {
       setToolbarExpanded(toolbarContent.hidden);
     });
@@ -1617,6 +1693,10 @@
     toolbarOpenFixed.addEventListener("click", () => {
       setToolbarVisible(true);
       toolbarToggle.focus();
+    });
+
+    document.addEventListener("fullscreenchange", () => {
+      if (!document.fullscreenElement && isLandscapeView) setLandscapeView(false);
     });
 
     if (mobileToolbarQuery.addEventListener) {
@@ -1693,6 +1773,7 @@
     }
     syncSearchQueryToUrl();
     applyCardSize(sizeRange.value);
+    updateOrientationToggle();
     updateAuthUi();
 
     onAuthStateChanged(auth, (user) => {

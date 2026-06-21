@@ -117,7 +117,14 @@
       font-weight: 950;
     }
 
-    .toolbar-toggle {
+    .toolbar-header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .toolbar-toggle, .toolbar-close, .toolbar-open-fixed {
       border: 0;
       border-radius: 999px;
       padding: 9px 14px;
@@ -127,6 +134,21 @@
       cursor: pointer;
       box-shadow: 0 10px 22px rgba(42, 39, 58, 0.16);
     }
+
+    .toolbar-close {
+      color: var(--accent);
+      background: rgba(111, 93, 231, 0.12);
+    }
+
+    .toolbar-open-fixed {
+      position: fixed;
+      top: max(12px, env(safe-area-inset-top));
+      right: max(12px, env(safe-area-inset-right));
+      z-index: 60;
+      padding: 11px 18px;
+    }
+
+    .toolbar-open-fixed[hidden] { display: none; }
 
     .toolbar-content {
       display: grid;
@@ -684,6 +706,8 @@
         border-radius: 20px;
       }
       .toolbar-actions { align-items: stretch; }
+      .toolbar-header-actions { width: 100%; }
+      .toolbar-header-actions > button { flex: 1; }
       .size-control { grid-template-columns: auto minmax(120px, 1fr) auto; }
       .auth-actions { width: 100%; }
       .upload-control { justify-content: center; width: 100%; }
@@ -695,10 +719,14 @@
 </head>
 <body>
   <main class="app-shell">
-    <section class="toolbar viewer-card" aria-label="一覧操作">
+    <button id="toolbarOpenFixed" class="toolbar-open-fixed" type="button" hidden>開く</button>
+    <section id="toolbar" class="toolbar viewer-card" aria-label="一覧操作">
       <div class="toolbar-header">
         <p class="toolbar-title">表示・検索メニュー</p>
-        <button id="toolbarToggle" class="toolbar-toggle" type="button" aria-expanded="false" aria-controls="toolbarContent">さらにメニューを開く</button>
+        <div class="toolbar-header-actions">
+          <button id="toolbarClose" class="toolbar-close" type="button">閉じる</button>
+          <button id="toolbarToggle" class="toolbar-toggle" type="button" aria-expanded="false" aria-controls="toolbarContent">さらにメニューを開く</button>
+        </div>
       </div>
       <div class="toolbar-actions">
         <label class="size-control" for="sizeRange">
@@ -815,7 +843,10 @@
     const sortSelect = document.querySelector("#sortSelect");
     const saveOrderButton = document.querySelector("#saveOrderButton");
     const operationStatus = document.querySelector("#operationStatus");
+    const toolbar = document.querySelector("#toolbar");
     const toolbarToggle = document.querySelector("#toolbarToggle");
+    const toolbarClose = document.querySelector("#toolbarClose");
+    const toolbarOpenFixed = document.querySelector("#toolbarOpenFixed");
     const toolbarContent = document.querySelector("#toolbarContent");
     const tagInfoButton = document.querySelector("#tagInfoButton");
     const tagInfoPanel = document.querySelector("#tagInfoPanel");
@@ -837,8 +868,18 @@
     function setToolbarExpanded(isExpanded) {
       toolbarContent.hidden = !isExpanded;
       toolbarToggle.setAttribute("aria-expanded", String(isExpanded));
-      toolbarToggle.closest(".toolbar")?.classList.toggle("is-expanded", isExpanded);
-      toolbarToggle.textContent = isExpanded ? "メニューを閉じる" : "さらにメニューを開く";
+      toolbar.classList.toggle("is-expanded", isExpanded);
+      toolbarToggle.textContent = isExpanded ? "さらにメニューを閉じる" : "さらにメニューを開く";
+    }
+
+    function setToolbarVisible(isVisible) {
+      toolbar.hidden = !isVisible;
+      toolbarOpenFixed.hidden = isVisible;
+      if (!isVisible) {
+        setTagInfoExpanded(false);
+        setTagPickerExpanded(false);
+        hideSearchSuggestions();
+      }
     }
 
     function setTagInfoExpanded(isExpanded) {
@@ -1527,6 +1568,15 @@
 
     toolbarToggle.addEventListener("click", () => {
       setToolbarExpanded(toolbarContent.hidden);
+    });
+
+    toolbarClose.addEventListener("click", () => {
+      setToolbarVisible(false);
+    });
+
+    toolbarOpenFixed.addEventListener("click", () => {
+      setToolbarVisible(true);
+      toolbarToggle.focus();
     });
 
     tagInfoButton.addEventListener("click", () => {

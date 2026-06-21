@@ -39,7 +39,7 @@
       padding: clamp(12px, 3vw, 28px);
     }
 
-    .controls, .viewer-card, .modal-content {
+    .viewer-card, .modal-content {
       border: 1px solid rgba(255, 255, 255, 0.72);
       background: var(--panel);
       border-radius: var(--radius);
@@ -47,72 +47,19 @@
       backdrop-filter: blur(14px);
     }
 
-    .controls {
-      position: sticky;
-      top: 12px;
-      z-index: 5;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      align-items: center;
-      justify-content: space-between;
-      padding: 14px;
-      margin-bottom: 24px;
-    }
-
-    .segmented {
-      display: inline-grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 6px;
-      padding: 6px;
-      border-radius: 18px;
-      background: #ede8fb;
-    }
-
-    .segmented button, .chip, .modal-close, .nav-button {
+    .modal-close, .nav-button {
       border: 0;
       cursor: pointer;
       transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
     }
 
-    .segmented button {
-      padding: 10px 14px;
-      border-radius: 13px;
-      color: #514a73;
-      background: transparent;
-      font-weight: 800;
-    }
-
-    .segmented button[aria-pressed="true"] {
-      color: white;
-      background: var(--accent);
-      box-shadow: 0 10px 18px rgba(111, 93, 231, 0.28);
-    }
-
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      min-height: 44px;
-      padding: 10px 14px;
-      border-radius: 999px;
-      color: var(--ink);
-      background: rgba(255, 255, 255, 0.78);
-      font-weight: 800;
-    }
-
-    .chip input { width: 18px; height: 18px; accent-color: var(--accent); }
-
     .gallery {
       display: grid;
       gap: var(--gap, 16px);
-      grid-template-columns: repeat(auto-fill, minmax(var(--card-min, 170px), 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(var(--card-min, 240px), 1fr));
       align-items: start;
     }
 
-    .gallery[data-size="large"] { --card-min: min(520px, 100%); --gap: 22px; }
-    .gallery[data-size="medium"] { --card-min: 280px; --gap: 18px; }
-    .gallery[data-size="small"] { --card-min: 150px; --gap: 12px; }
 
     .viewer-card {
       overflow: hidden;
@@ -143,7 +90,6 @@
       background: #e8edf4;
     }
 
-    .gallery[data-size="large"] .image-wrap { aspect-ratio: 16 / 10; }
     .image-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
     .badge {
@@ -158,11 +104,6 @@
       font-weight: 900;
     }
 
-    .card-body { padding: 16px; }
-    .card-body h2 { margin: 0 0 8px; font-size: clamp(1.05rem, 2vw, 1.35rem); }
-    .card-body p { margin: 0; color: var(--muted); line-height: 1.65; }
-    .gallery[data-size="small"] .card-body p { display: none; }
-    .gallery[data-size="small"] .card-body { padding: 10px; }
 
     .modal {
       position: fixed;
@@ -205,7 +146,7 @@
       font-weight: 900;
     }
 
-    .modal-close:hover, .nav-button:hover, .chip:hover, .segmented button:hover { transform: translateY(-1px); }
+    .modal-close:hover, .nav-button:hover { transform: translateY(-1px); }
 
     .zoom-stage {
       overflow: auto;
@@ -215,36 +156,21 @@
 
     .zoom-stage img {
       display: block;
-      width: min(100%, var(--zoom-width, 100%));
+      width: var(--zoom-width, 1600px);
       max-width: none;
       margin: auto;
     }
 
-    .zoom-stage.is-zoomed img { width: var(--zoom-width, 1600px); }
-    .hint { color: var(--muted); font-size: 0.92rem; }
-
     @media (max-width: 560px) {
       .app-shell { padding: 12px; }
-      .controls, .modal-header, .modal-footer { align-items: stretch; flex-direction: column; }
-      .segmented { width: 100%; }
-      .chip { justify-content: center; width: 100%; }
+      .modal-header, .modal-footer { align-items: stretch; flex-direction: column; }
       .gallery { grid-template-columns: repeat(auto-fill, minmax(var(--card-min, 145px), 1fr)); }
-      .gallery[data-size="medium"] { --card-min: 210px; }
     }
   </style>
 </head>
 <body>
   <main class="app-shell">
-    <section class="controls" aria-label="表示設定">
-      <div class="segmented" role="group" aria-label="一覧表示サイズ">
-        <button type="button" data-size="small">小さく一覧</button>
-        <button type="button" data-size="medium" aria-pressed="true">標準</button>
-        <button type="button" data-size="large">大きく</button>
-      </div>
-      <label class="chip"><input id="zoomToggle" type="checkbox" checked> 拡大時に高倍率で開く</label>
-    </section>
-
-    <section id="gallery" class="gallery" data-size="medium" aria-label="MBTI資料サンプル一覧"></section>
+    <section id="gallery" class="gallery" aria-label="MBTI資料サンプル一覧"></section>
   </main>
 
   <dialog id="modal" class="modal" aria-label="画像拡大表示">
@@ -256,7 +182,6 @@
       <div id="zoomStage" class="zoom-stage"><img id="modalImage" alt=""></div>
       <footer class="modal-footer">
         <button id="prevButton" class="nav-button" type="button">← 前へ</button>
-        <span class="hint">画像部分はスクロールできます。もう一度画像をタップすると倍率を切り替えます。</span>
         <button id="nextButton" class="nav-button" type="button">次へ →</button>
       </footer>
     </div>
@@ -318,25 +243,15 @@
     const modal = document.querySelector("#modal");
     const modalImage = document.querySelector("#modalImage");
     const modalTitle = document.querySelector("#modalTitle");
-    const zoomStage = document.querySelector("#zoomStage");
-    const zoomToggle = document.querySelector("#zoomToggle");
     let currentIndex = 0;
 
     gallery.innerHTML = materials.map((item, index) => `
       <article class="viewer-card">
         <button class="image-button" type="button" data-index="${index}" aria-label="${item[0]}を拡大表示">
           <div class="image-wrap"><img src="${svgData(item, index)}" alt="${item[0]}のサンプル資料"><span class="badge">${item[2]}</span></div>
-          <div class="card-body"><h2>${item[0]}</h2><p>${item[1]}</p></div>
         </button>
       </article>
     `).join("");
-
-    document.querySelectorAll("[data-size]").forEach((button) => {
-      button.addEventListener("click", () => {
-        gallery.dataset.size = button.dataset.size;
-        document.querySelectorAll("[data-size]").forEach((b) => b.setAttribute("aria-pressed", String(b === button)));
-      });
-    });
 
     function openModal(index) {
       currentIndex = (index + materials.length) % materials.length;
@@ -344,7 +259,6 @@
       modalTitle.textContent = item[0];
       modalImage.src = svgData(item, currentIndex);
       modalImage.alt = `${item[0]}の拡大資料`;
-      zoomStage.classList.toggle("is-zoomed", zoomToggle.checked);
       modal.showModal();
     }
 
@@ -356,7 +270,6 @@
     document.querySelector(".modal-close").addEventListener("click", () => modal.close());
     document.querySelector("#prevButton").addEventListener("click", () => openModal(currentIndex - 1));
     document.querySelector("#nextButton").addEventListener("click", () => openModal(currentIndex + 1));
-    zoomStage.addEventListener("click", () => zoomStage.classList.toggle("is-zoomed"));
     modal.addEventListener("click", (event) => { if (event.target === modal) modal.close(); });
     window.addEventListener("keydown", (event) => {
       if (!modal.open) return;

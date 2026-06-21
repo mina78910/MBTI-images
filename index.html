@@ -283,13 +283,14 @@
     }
 
     .tag-picker-panel {
-      position: absolute;
-      right: 0;
-      top: calc(100% + 10px);
+      position: fixed;
+      left: 50%;
+      top: var(--tag-picker-top, 96px);
+      transform: translateX(-50%);
       z-index: 30;
       display: grid;
       gap: 12px;
-      width: min(92vw, 760px);
+      width: min(calc(100vw - 24px), 760px);
       max-height: min(70vh, 560px);
       overflow: auto;
       padding: 16px;
@@ -374,6 +375,10 @@
       color: var(--muted);
       font-weight: 800;
     }
+
+    .tag-picker.advanced-on-mobile { display: none; }
+
+    .toolbar.is-expanded .tag-picker.advanced-on-mobile { display: grid; }
 
     .search-control input, .sort-select { width: 100%; }
 
@@ -683,7 +688,6 @@
       .auth-actions { width: 100%; }
       .upload-control { justify-content: center; width: 100%; }
       .tag-picker { width: 100%; }
-      .tag-picker-panel { left: 0; right: auto; width: calc(100vw - 24px); }
       .advanced-on-mobile { display: none; }
       .toolbar.is-expanded .advanced-on-mobile { display: grid; }
     }
@@ -858,6 +862,8 @@
       tagPickerPanel.hidden = !isExpanded;
       tagPickerButton.setAttribute("aria-expanded", String(isExpanded));
       if (isExpanded) {
+        const buttonRect = tagPickerButton.getBoundingClientRect();
+        tagPickerPanel.style.setProperty("--tag-picker-top", `${Math.max(12, buttonRect.bottom + 10)}px`);
         renderTagPicker();
         window.requestAnimationFrame(() => tagPickerFilter.focus());
       }

@@ -33,6 +33,14 @@
 
     button, input { font: inherit; }
 
+    .toolbar-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
     .app-shell {
       width: min(1440px, 100%);
       margin: 0 auto;
@@ -65,6 +73,43 @@
       width: min(100%, 620px);
       color: var(--muted);
       font-weight: 800;
+    }
+
+    .upload-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 16px;
+      border: 0;
+      border-radius: 999px;
+      color: white;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: 0 12px 28px rgba(42, 39, 58, 0.18);
+      font-weight: 900;
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .upload-control:hover, .upload-control:focus-within {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 34px rgba(42, 39, 58, 0.22);
+    }
+
+    .upload-control input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .upload-note {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+      font-weight: 700;
     }
 
     .size-control input[type="range"] {
@@ -130,18 +175,27 @@
 
     @media (max-width: 560px) {
       .app-shell { padding: 12px; }
+      .toolbar-actions { align-items: stretch; }
       .size-control { grid-template-columns: auto minmax(120px, 1fr) auto; }
+      .upload-control { justify-content: center; width: 100%; }
     }
   </style>
 </head>
 <body>
   <main class="app-shell">
-    <section class="toolbar viewer-card" aria-label="一覧サイズ調整">
-      <label class="size-control" for="sizeRange">
-        <span>小</span>
-        <input id="sizeRange" type="range" min="160" max="1180" step="20" value="240" aria-label="一覧画像の大きさ">
-        <span>大</span>
-      </label>
+    <section class="toolbar viewer-card" aria-label="一覧操作">
+      <div class="toolbar-actions">
+        <label class="size-control" for="sizeRange">
+          <span>小</span>
+          <input id="sizeRange" type="range" min="160" max="1180" step="20" value="240" aria-label="一覧画像の大きさ">
+          <span>大</span>
+        </label>
+        <label class="upload-control" for="imageUpload">
+          <span>画像を追加</span>
+          <input id="imageUpload" type="file" accept="image/*" multiple aria-label="追加する画像を選択">
+        </label>
+      </div>
+      <p class="upload-note">アップロードした画像はこのページを開いている間だけ表示されます。リロードすると消えます。</p>
     </section>
     <section id="gallery" class="gallery" aria-label="MBTI資料サンプル一覧"></section>
   </main>
@@ -203,8 +257,19 @@
       return item[3] || svgData(item, index);
     }
 
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;",
+        "'": "&#39;"
+      }[char]));
+    }
+
     const gallery = document.querySelector("#gallery");
     const sizeRange = document.querySelector("#sizeRange");
+    const imageUpload = document.querySelector("#imageUpload");
     const minCardSize = Number(sizeRange.min);
     const maxCardSize = Number(sizeRange.max);
 
@@ -215,13 +280,25 @@
       sizeRange.value = clampedSize;
     }
 
-    gallery.innerHTML = materials.map((item, index) => `
-      <article class="viewer-card">
-        <button class="image-button" type="button" data-index="${index}" aria-label="${item[0]}を表示">
-          <div class="image-wrap"><img src="${imageSrc(item, index)}" alt="${item[0]}のサンプル資料" data-fallback-src="${item[4] || svgData(item, index)}" data-final-fallback-src="${svgData(item, index)}"><span class="badge">${item[2]}</span></div>
-        </button>
-      </article>
-    `).join("");
+    function renderGallery() {
+      gallery.innerHTML = materials.map((item, index) => {
+        const title = escapeHtml(item[0]);
+        const tag = escapeHtml(item[2]);
+        const src = escapeHtml(imageSrc(item, index));
+        const fallbackSrc = escapeHtml(item[4] || svgData(item, index));
+        const finalFallbackSrc = escapeHtml(svgData(item, index));
+
+        return `
+          <article class="viewer-card">
+            <button class="image-button" type="button" data-index="${index}" aria-label="${title}を表示">
+              <div class="image-wrap"><img src="${src}" alt="${title}のサンプル資料" data-fallback-src="${fallbackSrc}" data-final-fallback-src="${finalFallbackSrc}"><span class="badge">${tag}</span></div>
+            </button>
+          </article>
+        `;
+      }).join("");
+    }
+
+    renderGallery();
 
     function maximizeFromList(index) {
       applyCardSize(maxCardSize);
@@ -232,6 +309,22 @@
     applyCardSize(sizeRange.value);
 
     sizeRange.addEventListener("input", (event) => applyCardSize(event.target.value));
+
+    imageUpload.addEventListener("change", (event) => {
+      const files = [...event.target.files].filter((file) => file.type.startsWith("image/"));
+      if (!files.length) return;
+
+      const startIndex = materials.length;
+      files.forEach((file, offset) => {
+        const src = URL.createObjectURL(file);
+        const title = file.name.replace(/\.[^/.]+$/, "") || `アップロード画像 ${startIndex + offset + 1}`;
+        materials.push([title, "このページ内で一時的に追加された画像", "Upload", src, src]);
+      });
+
+      renderGallery();
+      maximizeFromList(startIndex);
+      event.target.value = "";
+    });
     gallery.addEventListener("error", (event) => {
       const image = event.target.closest("img[data-fallback-src]");
       if (!image) return;

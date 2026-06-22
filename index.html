@@ -624,12 +624,36 @@
       align-items: center;
       gap: 6px;
       padding: 6px 10px;
+      border: 0;
       border-radius: 999px;
       color: white;
       background: rgba(39, 49, 63, 0.72);
       font-size: 0.78rem;
       font-weight: 900;
       line-height: 1;
+    }
+
+    button.tag-chip {
+      cursor: pointer;
+    }
+
+    button.tag-chip::after {
+      content: "×";
+      display: inline-grid;
+      place-items: center;
+      width: 1em;
+      height: 1em;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.22);
+      font-size: 0.9em;
+      line-height: 1;
+    }
+
+    button.tag-chip:hover,
+    button.tag-chip:focus-visible {
+      background: rgba(220, 53, 69, 0.82);
+      outline: 3px solid rgba(220, 53, 69, 0.2);
+      outline-offset: 2px;
     }
 
     .tag-form {
@@ -1133,6 +1157,37 @@
       }
     }
 
+    async function removeTagFromMaterial(index, rawValue) {
+      if (!currentUser) {
+        setMessage("タグを外すにはGoogleログインが必要です。");
+        return;
+      }
+
+      if (!canUpload()) {
+        setMessage("タグ削除には管理者Googleアカウントでのログインが必要です。");
+        return;
+      }
+
+      const item = materials[index];
+      if (!item) return;
+      const tagName = String(rawValue || "").trim();
+      if (!tagName) return;
+
+      const title = item.title || item.originalFileName || "この画像";
+      if (!window.confirm(`「${tagName}」タグを${title}から外しますか？\nタグ一覧全体からは削除されません。`)) return;
+
+      const remainingTags = itemTags(item).filter((tag) => tag.toLowerCase() !== tagName.toLowerCase());
+      if (remainingTags.length === itemTags(item).length) return;
+
+      try {
+        await updateDoc(doc(db, "materials", item.id), { tags: remainingTags });
+        showSuccessMessage(`${title}から「${tagName}」タグを外しました。タグマスタ自体は削除していません。`);
+      } catch (error) {
+        console.error("Tag removal failed", error);
+        showFirebaseError("タグ削除", error);
+      }
+    }
+
     function syncSearchQueryToUrl() {
       const queryText = searchInput.value.trim();
       const excludeQueryText = excludeSearchInput.value.trim();
@@ -1273,10 +1328,13 @@
 
       gallery.innerHTML = visibleItems.map(({ item, materialIndex }, visibleIndex) => {
         const title = escapeHtml(item.title || item.originalFileName || "無題の画像");
-        const tags = itemTags(item).map((value) => `<span class="tag-chip">${escapeHtml(value)}</span>`).join("");
         const src = escapeHtml(item.imageUrl);
         const isLoggedIn = Boolean(currentUser);
         const canEditTags = canUpload();
+        const tags = itemTags(item).map((value) => {
+          const escapedValue = escapeHtml(value);
+          return `<button class="tag-chip" type="button" data-remove-tag-index="${materialIndex}" data-tag="${escapedValue}" aria-label="${title}から${escapedValue}タグを外す" title="この画像からタグを外す">${escapedValue}</button>`;
+        }).join("");
         const adminControls = canEditTags ? `
           <div class="card-admin-actions">
             <button class="move-button" type="button" data-move-index="${visibleIndex}" data-move-direction="-1" ${visibleIndex === 0 ? "disabled" : ""}>前へ</button>
@@ -1631,6 +1689,12 @@
       if (suggestionButton) {
         const form = suggestionButton.closest(".tag-form");
         await addTagToMaterial(Number(form.dataset.index), suggestionButton.dataset.tag, form.elements.tag);
+        return;
+      }
+
+      const removeTagButton = event.target.closest("[data-remove-tag-index]");
+      if (removeTagButton) {
+        await removeTagFromMaterial(Number(removeTagButton.dataset.removeTagIndex), removeTagButton.dataset.tag);
         return;
       }
 

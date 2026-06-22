@@ -872,7 +872,7 @@
           </label>
         </div>
         <div class="status-area" aria-live="polite">
-          <p id="uploadNote" class="upload-note">PCでは画像ファイルの選択に加えて、クリップボードの画像をそのまま Ctrl+V / ⌘V で貼り付けて追加できます。アップロードにはGoogleログインが必要です。</p>
+          <p id="uploadNote" class="upload-note" hidden>PCでは画像ファイルの選択に加えて、クリップボードの画像をそのまま Ctrl+V / ⌘V で貼り付けて追加できます。アップロードにはGoogleログインが必要です。</p>
           <div id="operationStatus" class="status-message" hidden></div>
         </div>
       </div>
@@ -1370,6 +1370,7 @@
       const uploadAllowed = canUpload() && !isUploading && !replacingMaterialId;
       imageUpload.disabled = !uploadAllowed;
       uploadControl.hidden = !currentUser;
+      uploadNote.hidden = !currentUser;
       uploadControl.setAttribute("aria-disabled", String(!uploadAllowed));
       uploadLabel.textContent = isUploading ? "アップロード中..." : "画像を追加";
       loginButton.hidden = Boolean(currentUser);

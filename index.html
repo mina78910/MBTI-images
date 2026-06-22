@@ -1169,7 +1169,7 @@
       if (!tagName) return;
 
       const title = item.title || item.originalFileName || "この画像";
-      if (!window.confirm(`「${tagName}」タグを${title}から外しますか？\nタグ一覧全体からは削除されません。`)) return;
+      if (!window.confirm(`「${tagName}」タグを${title}から外しますか？\nこの画像からタグの紐づけだけを外します。タグマスタ自体は削除しません。`)) return;
 
       const remainingTags = itemTags(item).filter((tag) => tag.toLowerCase() !== tagName.toLowerCase());
       if (remainingTags.length === itemTags(item).length) return;
@@ -1329,7 +1329,7 @@
         const tags = itemTags(item).map((value) => {
           const escapedValue = escapeHtml(value);
           if (!canEditTags) return `<span class="tag-chip">${escapedValue}</span>`;
-          return `<button class="tag-chip" type="button" data-remove-tag-index="${materialIndex}" data-tag="${escapedValue}" aria-label="${title}から${escapedValue}タグを外す">${escapedValue}</button>`;
+          return `<button class="tag-chip" type="button" data-remove-tag-index="${materialIndex}" data-tag="${escapedValue}" aria-label="${title}から${escapedValue}タグを外す" title="クリックしてこの画像からタグを外す">${escapedValue}</button>`;
         }).join("");
         const adminControls = canEditTags ? `
           <div class="card-admin-actions">

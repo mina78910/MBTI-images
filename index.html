@@ -634,26 +634,9 @@
     }
 
     button.tag-chip {
+      appearance: none;
+      font-family: inherit;
       cursor: pointer;
-    }
-
-    button.tag-chip::after {
-      content: "×";
-      display: inline-grid;
-      place-items: center;
-      width: 1em;
-      height: 1em;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.22);
-      font-size: 0.9em;
-      line-height: 1;
-    }
-
-    button.tag-chip:hover,
-    button.tag-chip:focus-visible {
-      background: rgba(220, 53, 69, 0.82);
-      outline: 3px solid rgba(220, 53, 69, 0.2);
-      outline-offset: 2px;
     }
 
     .tag-form {
@@ -1333,7 +1316,8 @@
         const canEditTags = canUpload();
         const tags = itemTags(item).map((value) => {
           const escapedValue = escapeHtml(value);
-          return `<button class="tag-chip" type="button" data-remove-tag-index="${materialIndex}" data-tag="${escapedValue}" aria-label="${title}から${escapedValue}タグを外す" title="この画像からタグを外す">${escapedValue}</button>`;
+          if (!isLoggedIn) return `<span class="tag-chip">${escapedValue}</span>`;
+          return `<button class="tag-chip" type="button" data-remove-tag-index="${materialIndex}" data-tag="${escapedValue}" aria-label="${title}から${escapedValue}タグを外す">${escapedValue}</button>`;
         }).join("");
         const adminControls = canEditTags ? `
           <div class="card-admin-actions">

@@ -825,7 +825,7 @@
             <label for="searchInput">タグ検索</label>
             <span class="tag-info-wrapper">
               <button id="tagInfoButton" class="tag-info-button" type="button" aria-expanded="false" aria-controls="tagInfoPanel" aria-label="タグ検索の仕様を表示">i</button>
-              <span id="tagInfoPanel" class="tag-info-panel" role="status" hidden>タグ検索は大文字・小文字を区別しません。検索中のタグはURLにも保存されるため、そのURLを共有すると同じタグ検索状態で開けます。</span>
+              <span id="tagInfoPanel" class="tag-info-panel" role="status" hidden>タグ検索は大文字・小文字を区別しません。スペース・カンマ・読点区切りで複数入力すると、いずれかのタグに一致する画像を表示します。検索中のタグはURLにも保存されるため、そのURLを共有すると同じタグ検索状態で開けます。</span>
             </span>
           </div>
           <input id="searchInput" type="search" placeholder="例: NT、内向、チーム" autocomplete="off" aria-label="タグで資料を検索">
@@ -1266,7 +1266,7 @@
 
     function splitTagQuery(queryText) {
       return queryText
-        .split(/[\s,、]+/)
+        .split(/[\s,、，]+/)
         .map((value) => value.trim().toLowerCase())
         .filter(Boolean);
     }
@@ -1275,7 +1275,7 @@
       const tags = itemTags(item).map((tag) => tag.toLowerCase());
       const includeTerms = splitTagQuery(includeQueryText);
       const excludeTerms = splitTagQuery(excludeQueryText);
-      const hasIncludedTag = !includeTerms.length || includeTerms.every((term) => tags.some((tag) => tag.includes(term)));
+      const hasIncludedTag = !includeTerms.length || includeTerms.some((term) => tags.some((tag) => tag.includes(term)));
       const hasExcludedTag = excludeTerms.some((term) => tags.some((tag) => tag.includes(term)));
       return hasIncludedTag && !hasExcludedTag;
     }

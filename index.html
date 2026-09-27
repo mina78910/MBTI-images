@@ -552,6 +552,33 @@
       align-items: start;
     }
 
+    /* iOS 9 does not implement the unprefixed Grid layout used above. */
+    @supports not (display: grid) {
+      .gallery {
+        display: flex;
+        flex-wrap: wrap;
+        margin: -8px;
+      }
+
+      .gallery .viewer-card {
+        flex: 1 1 240px;
+        margin: 8px;
+        max-width: 100%;
+      }
+
+      .toolbar, .toolbar-content, .search-control, .sort-control, .status-area, .card-details {
+        display: block;
+      }
+
+      .toolbar > *, .toolbar-content > *, .search-control > *, .sort-control > *, .status-area > *, .card-details > * {
+        margin-bottom: 10px;
+      }
+
+      .image-wrap {
+        height: 180px;
+      }
+    }
+
 
     .viewer-card {
       overflow: hidden;
@@ -869,6 +896,12 @@
     </section>
     <section id="gallery" class="gallery" aria-label="MBTI資料サンプル一覧"></section>
   </main>
+
+  <!--
+    Read-only ES5 fallback for browsers without JavaScript modules (including
+    iOS 9 Safari). Browsers which run the Firebase module below skip this file.
+  -->
+  <script nomodule src="legacy-viewer.js"></script>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";

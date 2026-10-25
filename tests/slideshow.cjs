@@ -24,7 +24,7 @@ async function checkImageOnlyView(page, term, count) {
 (async()=>{
  const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH || '/usr/bin/chromium',headless:true,args:['--no-sandbox']});
  try {
- for (const viewport of [{width:1280,height:800},{width:390,height:844}]) {
+ for (const viewport of [{width:1280,height:800},{width:320,height:740},{width:390,height:844},{width:560,height:844}]) {
   const page=await browser.newPage({viewport}); const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.route('https://www.gstatic.com/**',async route=>{
    const name=route.request().url().match(/firebase-(\w+)\.js/)[1];
@@ -41,6 +41,20 @@ async function checkImageOnlyView(page, term, count) {
   assert(await page.locator('#toolbar #slideshowControls').count()===1);
   assert.equal(await page.locator('#slideshowControls').evaluate(el=>getComputedStyle(el).position),'static');
   assert(await page.evaluate(()=>scrollY)>10);assert.equal(await page.locator('#slideshowToggle').getAttribute('aria-pressed'),'true');
+  if(viewport.width<=560){
+   const layout=await page.evaluate(()=>{
+    const button=document.querySelector('#slideshowToggle').getBoundingClientRect();
+    const speed=document.querySelector('.slideshow-speed').getBoundingClientRect();
+    return {buttonTop:button.top,speedTop:speed.top,buttonHeight:button.height,speedHeight:speed.height,
+     actions:['orientationToggle','toolbarClose','toolbarToggle'].map(id=>{const el=document.getElementById(id);return {height:el.getBoundingClientRect().height,overflow:el.scrollWidth>el.clientWidth}}),
+     overflow:document.documentElement.scrollWidth>innerWidth};
+   });
+   assert(Math.abs(layout.buttonTop-layout.speedTop)<2);
+   assert(layout.buttonHeight<=40&&layout.speedHeight<=40);
+   assert(layout.actions.every(action=>action.height<=40&&!action.overflow));
+   assert(!layout.overflow);
+   await page.screenshot({path:'/tmp/mbti-mobile-toolbar-'+viewport.width+'.png'});
+  }
   assert(await page.locator('#imageOnlyToggle').isChecked());
   assert(await page.locator('#gallery .card-details').first().isHidden());
   const p1=await page.evaluate(()=>scrollY);await page.locator('#slideshowSpeed').selectOption('80');await page.waitForTimeout(700);const p2=await page.evaluate(()=>scrollY);assert(p2-p1>40);

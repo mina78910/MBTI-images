@@ -836,6 +836,39 @@
     .slideshow-speed { font-size: 0.85rem; }
     .slideshow-speed select { padding: 6px; border-radius: 8px; }
     .slideshow-status { font-size: 0.85rem; }
+    .toolbar-toggle-mobile { display: none; }
+
+    @media (max-width: 560px) {
+      .toolbar-header {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 6px;
+      }
+      .toolbar-title { grid-column: span 3; font-size: 0.8rem; white-space: nowrap; }
+      .toolbar-header-actions { display: contents; }
+      .toolbar-header-actions .image-only-control {
+        grid-column: span 3; justify-self: end; font-size: 0.75rem;
+        white-space: nowrap; gap: 4px;
+      }
+      .toolbar-header-actions > button {
+        grid-column: span 2; min-width: 0; min-height: 36px;
+        padding: 6px 8px; font-size: 0.8rem; line-height: 1.3;
+        white-space: nowrap; box-shadow: none;
+      }
+      .slideshow-controls {
+        grid-column: 1 / -1; flex-wrap: nowrap; justify-content: space-between;
+        min-width: 0; gap: 6px;
+      }
+      .slideshow-controls .orientation-toggle {
+        min-height: 36px; padding: 6px 10px; font-size: 0.8rem;
+        line-height: 1.3; white-space: nowrap; box-shadow: none;
+      }
+      .slideshow-speed { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; font-size: 0.75rem; }
+      .slideshow-speed select { min-height: 36px; padding: 4px; max-width: 90px; }
+      .slideshow-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+      .toolbar-toggle-desktop { display: none; }
+      .toolbar-toggle-mobile { display: inline; }
+    }
   </style>
 </head>
 <body>
@@ -861,7 +894,7 @@
           </div>
           <button id="orientationToggle" class="orientation-toggle" type="button" aria-pressed="false">横持ち表示</button>
           <button id="toolbarClose" class="toolbar-close" type="button">閉じる</button>
-          <button id="toolbarToggle" class="toolbar-toggle" type="button" aria-expanded="false" aria-controls="toolbarContent">さらにメニューを開く</button>
+          <button id="toolbarToggle" class="toolbar-toggle" type="button" aria-expanded="false" aria-controls="toolbarContent"><span class="toolbar-toggle-desktop">さらにメニューを開く</span><span class="toolbar-toggle-mobile">詳細を開く</span></button>
         </div>
       </div>
       <div class="toolbar-actions">
@@ -1070,7 +1103,8 @@
       toolbarContent.hidden = !isExpanded;
       toolbarToggle.setAttribute("aria-expanded", String(isExpanded));
       toolbar.classList.toggle("is-expanded", isExpanded);
-      toolbarToggle.textContent = isExpanded ? "さらにメニューを閉じる" : "さらにメニューを開く";
+      toolbarToggle.querySelector(".toolbar-toggle-desktop").textContent = isExpanded ? "さらにメニューを閉じる" : "さらにメニューを開く";
+      toolbarToggle.querySelector(".toolbar-toggle-mobile").textContent = isExpanded ? "詳細を閉じる" : "詳細を開く";
       updateToolbarScrollLock();
     }
 

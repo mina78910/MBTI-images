@@ -20,6 +20,13 @@ from the current position toward the bottom, preserving the selected order
 and image size. Small cards scroll together as a grid; large cards scroll
 through their full height. The array is not reversed.
 
+The upper menu's 「画像のみ表示」 checkbox hides image-card tags, editing
+controls, backgrounds, borders, and shadows, and displays images at their
+natural aspect ratio. The upper menu remains available, including tag search
+and exclusion filters. Filtering and slideshows continue to use the current
+display mode. Uncheck the box to restore the normal cards; the filter and
+image-size selections are preserved. This also works in the legacy viewer.
+
 Speed can be changed during playback: slow (20 pixels/second), standard
 (40 pixels/second), or fast (80 pixels/second). The same button or Escape stops
 playback. Playback also stops at the bottom, when filtering leaves no images,

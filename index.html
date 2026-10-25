@@ -600,6 +600,23 @@
       z-index: 5;
     }
 
+    body.image-only-view .gallery .card-details { display: none; }
+    body.image-only-view .gallery .viewer-card {
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+      backdrop-filter: none;
+      transform: none;
+    }
+    body.image-only-view .gallery .image-wrap {
+      height: auto;
+      aspect-ratio: auto;
+      background: transparent;
+    }
+    body.image-only-view .gallery .image-wrap img { height: auto; }
+    .image-only-control { display: inline-flex; align-items: center; gap: 6px; }
+
     .toolbar.viewer-card { cursor: default; }
     .toolbar.viewer-card:hover, .toolbar.viewer-card:focus-within { transform: none; }
 
@@ -828,6 +845,9 @@
       <div class="toolbar-header">
         <p class="toolbar-title">表示・検索メニュー</p>
         <div class="toolbar-header-actions">
+          <label class="image-only-control">
+            <input id="imageOnlyToggle" type="checkbox">画像のみ表示
+          </label>
           <div id="slideshowControls" class="slideshow-controls">
             <button id="slideshowToggle" class="orientation-toggle" type="button" aria-pressed="false">スライドショー</button>
             <label class="slideshow-speed">速度
@@ -916,6 +936,7 @@
     Read-only ES5 fallback for browsers without JavaScript modules (including
     iOS 9 Safari). Browsers which run the Firebase module below skip this file.
   -->
+  <script src="image-only-view.js"></script>
   <script src="slideshow.js"></script>
   <script nomodule src="legacy-viewer.js"></script>
 

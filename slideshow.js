@@ -4,9 +4,6 @@
   var toggle = document.getElementById("slideshowToggle");
   var speed = document.getElementById("slideshowSpeed");
   var status = document.getElementById("slideshowStatus");
-  var controls = document.getElementById("slideshowControls");
-  var home = controls.parentNode;
-  var next = controls.nextSibling;
   var gallery = document.getElementById("gallery");
   var shell = document.querySelector(".app-shell");
   var playing = false;
@@ -26,8 +23,6 @@
     playing = false;
     window.cancelAnimationFrame(frame);
     frame = null;
-    document.body.classList.remove("slideshow-playing");
-    home.insertBefore(controls, next);
     toggle.setAttribute("aria-pressed", "false");
     toggle.textContent = "スライドショー";
     status.textContent = message || "";
@@ -59,8 +54,6 @@
     playing = true;
     previousTime = null;
     previousScroller = null;
-    document.body.appendChild(controls);
-    document.body.classList.add("slideshow-playing");
     toggle.setAttribute("aria-pressed", "true");
     toggle.textContent = "スライドショー終了";
     status.textContent = "再生中";

@@ -17,6 +17,8 @@ const fs=require('node:fs');
   // Filtered dataset, including exclusion, remains the only rendered slideshow content.
   await page.locator('#searchInput').fill('even'); assert.equal(await page.locator('#gallery .viewer-card').count(),20);
   await page.locator('#slideshowToggle').click();await page.waitForTimeout(700);
+  assert(await page.locator('#toolbar #slideshowControls').count()===1);
+  assert.equal(await page.locator('#slideshowControls').evaluate(el=>getComputedStyle(el).position),'static');
   assert(await page.evaluate(()=>scrollY)>10);assert.equal(await page.locator('#slideshowToggle').getAttribute('aria-pressed'),'true');
   const p1=await page.evaluate(()=>scrollY);await page.locator('#slideshowSpeed').selectOption('80');await page.waitForTimeout(700);const p2=await page.evaluate(()=>scrollY);assert(p2-p1>40);
   await page.locator('#slideshowToggle').click();const stopped=await page.evaluate(()=>scrollY);await page.waitForTimeout(250);assert.equal(await page.evaluate(()=>scrollY),stopped);
@@ -27,7 +29,7 @@ const fs=require('node:fs');
   if(viewport.width<560){
    await page.evaluate(()=>{document.body.classList.add('landscape-view');document.querySelector('.app-shell').scrollTop=0});
    await page.locator('#slideshowToggle').click();await page.waitForTimeout(600);assert(await page.locator('.app-shell').evaluate(el=>el.scrollTop)>20);
-   const box=await page.locator('#slideshowToggle').boundingBox();assert(box.x>=0&&box.y>=0&&box.x+box.width<=viewport.width&&box.y+box.height<=viewport.height);
+   assert.equal(await page.locator('#toolbar #slideshowControls').count(),1);
    await page.locator('#slideshowToggle').click();await page.evaluate(()=>document.body.classList.remove('landscape-view'));
   }
   // Changing the filter to no results stops playback.

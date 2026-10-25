@@ -815,6 +815,16 @@
         overflow: hidden;
       }
     }
+    .slideshow-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .slideshow-speed { font-size: 0.85rem; }
+    .slideshow-speed select { padding: 6px; border-radius: 8px; }
+    body.slideshow-playing .slideshow-controls {
+      position: fixed; bottom: 16px; right: 16px; z-index: 100;
+      padding: 10px; border-radius: 16px; background: #fff;
+      color: #27313f; box-shadow: 0 4px 20px rgba(42, 39, 58, 0.2);
+    }
+    body.slideshow-playing .toolbar { backdrop-filter: none; }
+    .slideshow-status { font-size: 0.85rem; }
   </style>
 </head>
 <body>
@@ -824,6 +834,17 @@
       <div class="toolbar-header">
         <p class="toolbar-title">表示・検索メニュー</p>
         <div class="toolbar-header-actions">
+          <div id="slideshowControls" class="slideshow-controls">
+            <button id="slideshowToggle" class="orientation-toggle" type="button" aria-pressed="false">スライドショー</button>
+            <label class="slideshow-speed">速度
+              <select id="slideshowSpeed" aria-label="スライドショーの速度">
+                <option value="20">ゆっくり</option>
+                <option value="40" selected>標準</option>
+                <option value="80">速い</option>
+              </select>
+            </label>
+            <span id="slideshowStatus" class="slideshow-status" role="status" aria-live="polite"></span>
+          </div>
           <button id="orientationToggle" class="orientation-toggle" type="button" aria-pressed="false">横持ち表示</button>
           <button id="toolbarClose" class="toolbar-close" type="button">閉じる</button>
           <button id="toolbarToggle" class="toolbar-toggle" type="button" aria-expanded="false" aria-controls="toolbarContent">さらにメニューを開く</button>
@@ -901,6 +922,7 @@
     Read-only ES5 fallback for browsers without JavaScript modules (including
     iOS 9 Safari). Browsers which run the Firebase module below skip this file.
   -->
+  <script src="slideshow.js"></script>
   <script nomodule src="legacy-viewer.js"></script>
 
   <script type="module">

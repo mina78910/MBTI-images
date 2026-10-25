@@ -14,6 +14,26 @@ supports:
 - switching between date and saved custom order; and
 - enlarging an image card.
 
+Both modern and legacy viewers support the slideshow button to the left of
+the landscape-view button. It automatically scrolls the current filtered list
+from the current position toward the bottom, preserving the selected order
+and image size. Small cards scroll together as a grid; large cards scroll
+through their full height. The array is not reversed.
+
+Speed can be changed during playback: slow (20 pixels/second), standard
+(40 pixels/second), or fast (80 pixels/second). The same button or Escape stops
+playback. Playback also stops at the bottom, when filtering leaves no images,
+or when the browser tab becomes hidden. It does not loop. The playback controls
+remain fixed on screen during playback. The modern portrait landscape fallback
+scrolls its rotated app container instead of the document.
+
+For regression checks, serve this directory with
+`python3 -m http.server 8000 --bind 127.0.0.1`, then run
+`node tests/slideshow.cjs` with Playwright installed and Chromium available at
+`/usr/bin/chromium` (or set `CHROMIUM_PATH`). The test uses mocked Firebase
+responses, makes no production writes, and covers desktop, mobile, rotated
+landscape, filtering, speed changes, stopping, end of list, and the legacy viewer.
+
 The legacy path is intentionally read-only. It does not provide Google login,
 uploads, tag editing, deletion, manual ordering, fullscreen/orientation lock,
 or realtime updates. Refresh the page to retrieve later Firestore changes.

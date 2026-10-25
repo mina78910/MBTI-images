@@ -24,7 +24,8 @@ Speed can be changed during playback: slow (20 pixels/second), standard
 (40 pixels/second), or fast (80 pixels/second). The same button or Escape stops
 playback. Playback also stops at the bottom, when filtering leaves no images,
 or when the browser tab becomes hidden. It does not loop. The playback controls
-remain fixed on screen during playback. The modern portrait landscape fallback
+remain in their original position in the upper toolbar during playback.
+The modern portrait landscape fallback
 scrolls its rotated app container instead of the document.
 
 For regression checks, serve this directory with

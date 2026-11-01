@@ -29,11 +29,16 @@ image-size selections are preserved. This also works in the legacy viewer.
 
 Speed can be changed during playback: slow (20 pixels/second), standard
 (40 pixels/second), or fast (80 pixels/second). The same button or Escape stops
-playback. Playback also stops at the bottom, when filtering leaves no images,
-or when the browser tab becomes hidden. It does not loop. The playback controls
+playback. At the bottom, playback rewinds to the top in 450 milliseconds and
+continues at the selected speed, looping through the current filtered list.
+With reduced motion enabled, the rewind is instant. A list that fits on screen
+remains still. Playback stops when filtering leaves no images or when the browser
+tab becomes hidden. The playback controls
 remain in their original position in the upper toolbar during playback.
 The modern portrait landscape fallback
 scrolls its rotated app container instead of the document.
+The 「開く」 button stays fixed to the viewport when the menu is closed,
+including while scrolling the rotated landscape container.
 
 For regression checks, serve this directory with
 `python3 -m http.server 8000 --bind 127.0.0.1`, then run

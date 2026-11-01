@@ -38,7 +38,10 @@ remain in their original position in the upper toolbar during playback.
 The modern portrait landscape fallback
 scrolls its rotated app container instead of the document.
 The 「開く」 button stays fixed to the viewport when the menu is closed,
-including while scrolling the rotated landscape container.
+including while scrolling the rotated landscape container. In the portrait
+landscape fallback it rotates with the images and sits at the rotated view's
+upper-right (the physical viewport's lower-right). In physical landscape or
+normal view it remains upright at the viewport's upper-right.
 
 For regression checks, serve this directory with
 `python3 -m http.server 8000 --bind 127.0.0.1`, then run

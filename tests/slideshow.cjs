@@ -25,6 +25,25 @@ async function checkFixedOpener(page, rotated = false) {
  assert(await page.evaluate(rotated=>(rotated?document.querySelector('.app-shell'):document.scrollingElement).scrollTop,rotated)>100);
  assert.deepEqual(after,before,'opener must stay fixed while scrolling');
  const viewport=page.viewportSize();assert(after.x>=0&&after.y>=0&&after.x+after.width<=viewport.width&&after.y+after.height<=viewport.height);
+ assert(Math.abs(viewport.width-after.x-after.width-12)<2);
+ const transform=await page.locator('#toolbarOpenFixed').evaluate(el=>getComputedStyle(el).transform);
+ if(rotated){
+  assert(Math.abs(viewport.height-after.y-after.height-12)<2,'rotated upper-right is the physical lower-right');
+  assert(transform.startsWith('matrix(0, 1, -1, 0,'),'opener must rotate with the images');
+  await page.screenshot({path:'/tmp/mbti-rotated-opener-'+viewport.width+'.png'});
+  // Physical landscape removes the app-side rotation, even with the menu closed.
+  await page.setViewportSize({width:viewport.height,height:viewport.width});
+  const native=await page.locator('#toolbarOpenFixed').boundingBox();
+  assert(Math.abs(native.y-12)<2);
+  assert(Math.abs(viewport.height-native.x-native.width-12)<2);
+  assert.equal(await page.locator('#toolbarOpenFixed').evaluate(el=>getComputedStyle(el).transform),'none');
+  await page.setViewportSize(viewport);
+  const restored=await page.locator('#toolbarOpenFixed').boundingBox();
+  assert.deepEqual(restored,after);
+ } else {
+  assert(Math.abs(after.y-12)<2);
+  assert.equal(transform,'none');
+ }
  await page.locator('#toolbarOpenFixed').click();assert(await page.locator('#toolbar').isVisible());
 }
 async function checkImageOnlyView(page, term, count) {

@@ -194,6 +194,16 @@
 
     .toolbar-open-fixed[hidden] { display: none; }
 
+    @media (orientation: portrait) {
+      body.landscape-view .toolbar-open-fixed {
+        top: auto;
+        bottom: max(12px, env(safe-area-inset-bottom));
+        transform-origin: bottom right;
+        /* The rotated view's upper-right corner is the viewport's lower-right. */
+        transform: rotate(90deg) translateY(100%);
+      }
+    }
+
     .toolbar-content {
       display: grid;
       gap: 14px;

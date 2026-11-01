@@ -1,6 +1,32 @@
 const {chromium}=require('playwright');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
+async function checkLoop(page, rotated = false) {
+ const position = () => page.evaluate(rotated => (rotated ? document.querySelector('.app-shell') : document.scrollingElement).scrollTop, rotated);
+ for (let round=0; round<2; round++) {
+  await page.evaluate(rotated=>{const el=rotated?document.querySelector('.app-shell'):document.scrollingElement;el.scrollTop=el.scrollHeight},rotated);
+  await page.waitForTimeout(650);
+  assert.equal(await page.locator('#slideshowToggle').getAttribute('aria-pressed'),'true');
+  assert(await position()<100,'rewind should reach the top');
+  const start=await position();await page.waitForTimeout(180);assert(await position()>start,'reading should resume');
+ }
+ // Escape during the rewind cancels both the rewind and playback.
+ await page.evaluate(rotated=>{const el=rotated?document.querySelector('.app-shell'):document.scrollingElement;el.scrollTop=el.scrollHeight},rotated);
+ await page.waitForTimeout(120);await page.keyboard.press('Escape');
+ const stopped=await position();await page.waitForTimeout(200);assert.equal(await position(),stopped);
+ assert.equal(await page.locator('#slideshowToggle').getAttribute('aria-pressed'),'false');
+}
+async function checkFixedOpener(page, rotated = false) {
+ await page.locator('#toolbarClose').click();
+ await page.evaluate(rotated=>{const el=rotated?document.querySelector('.app-shell'):document.scrollingElement;el.scrollTop=0},rotated);
+ const before=await page.locator('#toolbarOpenFixed').boundingBox();
+ await page.evaluate(rotated=>{const el=rotated?document.querySelector('.app-shell'):document.scrollingElement;el.scrollTop+=600},rotated);
+ const after=await page.locator('#toolbarOpenFixed').boundingBox();
+ assert(await page.evaluate(rotated=>(rotated?document.querySelector('.app-shell'):document.scrollingElement).scrollTop,rotated)>100);
+ assert.deepEqual(after,before,'opener must stay fixed while scrolling');
+ const viewport=page.viewportSize();assert(after.x>=0&&after.y>=0&&after.x+after.width<=viewport.width&&after.y+after.height<=viewport.height);
+ await page.locator('#toolbarOpenFixed').click();assert(await page.locator('#toolbar').isVisible());
+}
 async function checkImageOnlyView(page, term, count) {
  await page.locator('#imageOnlyToggle').check();
  await page.locator('#searchInput').fill(term);
@@ -59,6 +85,7 @@ async function checkImageOnlyView(page, term, count) {
   assert(await page.locator('#gallery .card-details').first().isHidden());
   const p1=await page.evaluate(()=>scrollY);await page.locator('#slideshowSpeed').selectOption('80');await page.waitForTimeout(700);const p2=await page.evaluate(()=>scrollY);assert(p2-p1>40);
   await page.locator('#slideshowToggle').click();const stopped=await page.evaluate(()=>scrollY);await page.waitForTimeout(250);assert.equal(await page.evaluate(()=>scrollY),stopped);
+  await checkFixedOpener(page);
   // Large cards still scroll without changing their size.
   await page.locator('#sizeRange').evaluate(el=>{el.value='1180';el.dispatchEvent(new Event('input',{bubbles:true}))});
   await page.locator('#slideshowToggle').click();await page.waitForTimeout(400);assert.equal(await page.locator('#sizeRange').inputValue(),'1180');await page.keyboard.press('Escape');assert.equal(await page.locator('#slideshowToggle').getAttribute('aria-pressed'),'false');
@@ -67,13 +94,31 @@ async function checkImageOnlyView(page, term, count) {
    await page.evaluate(()=>{document.body.classList.add('landscape-view');document.querySelector('.app-shell').scrollTop=0});
    await page.locator('#slideshowToggle').click();await page.waitForTimeout(600);assert(await page.locator('.app-shell').evaluate(el=>el.scrollTop)>20);
    assert.equal(await page.locator('#toolbar #slideshowControls').count(),1);
-   await page.locator('#slideshowToggle').click();await page.evaluate(()=>document.body.classList.remove('landscape-view'));
+   await checkLoop(page,true);
+   await checkFixedOpener(page,true);
+   await page.evaluate(()=>document.body.classList.remove('landscape-view'));
   }
   // Changing the filter to no results stops playback.
   await page.locator('#slideshowToggle').click();await page.locator('#searchInput').fill('missing');await page.waitForTimeout(100);assert.equal(await page.locator('#slideshowToggle').getAttribute('aria-pressed'),'false');assert.equal(await page.locator('#slideshowStatus').innerText(),'表示対象がありません');
   await page.locator('#searchInput').fill('even');
-  await page.locator('#slideshowToggle').click();await page.evaluate(()=>window.scrollTo(0,document.documentElement.scrollHeight));await page.waitForTimeout(200);assert.equal(await page.locator('#slideshowStatus').innerText(),'最後まで表示しました');
-  assert.deepEqual(errors,[]); console.log('PASS modern image-only toggle, aspect ratio, include/exclude filters, slideshow speed, stop, large cards, empty, end'+(viewport.width<560?', rotated shell':'')+' '+viewport.width);await page.close();
+  await page.locator('#slideshowToggle').click();await checkLoop(page);
+  if(viewport.width===1280){
+   await page.evaluate(()=>document.body.classList.add('landscape-view'));
+   await checkFixedOpener(page);
+   await page.evaluate(()=>document.body.classList.remove('landscape-view'));
+   await page.emulateMedia({reducedMotion:'reduce'});
+   await page.locator('#slideshowToggle').click();await checkLoop(page);
+   await page.emulateMedia({reducedMotion:'no-preference'});
+   // All images fitting on screen should not cause repeated rewinds or stop playback.
+   await page.addStyleTag({content:'#gallery .viewer-card { display:none } #gallery .viewer-card:first-child {display:block; height:1px; overflow:hidden}'});
+   await page.evaluate(()=>scrollTo(0,0));
+   await page.locator('#slideshowToggle').click();await page.waitForTimeout(600);
+   assert.equal(await page.evaluate(()=>document.scrollingElement.scrollHeight-document.scrollingElement.clientHeight),0);
+   assert.equal(await page.evaluate(()=>scrollY),0);
+   assert.equal(await page.locator('#slideshowToggle').getAttribute('aria-pressed'),'true');
+   await page.keyboard.press('Escape');
+  }
+  assert.deepEqual(errors,[]); console.log('PASS modern image-only toggle, aspect ratio, include/exclude filters, slideshow speed, stop, large cards, empty, looping, fixed menu opener'+(viewport.width<560?', rotated shell':'')+' '+viewport.width);await page.close();
  }
  // Run the real legacy viewer with a deterministic read-only Firestore response.
  const legacy=await browser.newPage({viewport:{width:390,height:844}});
@@ -89,7 +134,8 @@ async function checkImageOnlyView(page, term, count) {
  await legacy.locator('#searchInput').fill('odd');assert.equal(await legacy.locator('#gallery .viewer-card').count(),15);
  await checkImageOnlyView(legacy,'odd',15);
  await legacy.locator('#slideshowToggle').click();await legacy.waitForTimeout(600);assert(await legacy.evaluate(()=>scrollY)>10);
+ await checkLoop(legacy);
  await legacy.keyboard.press('Escape');assert.equal(await legacy.locator('#slideshowToggle').getAttribute('aria-pressed'),'false');
- console.log('PASS legacy image-only toggle, aspect ratio, include/exclude filters, scrolling and stop');await legacy.close();
+ console.log('PASS legacy image-only toggle, aspect ratio, include/exclude filters, looping and stop');await legacy.close();
  } finally {await browser.close()}
 })().catch(e=>{console.error(e);process.exitCode=1});
